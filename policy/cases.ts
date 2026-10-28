@@ -1,5 +1,6 @@
 import type { Commit } from "../gate/commit.ts";
 import type { Payee } from "../ledger/payee.ts";
+import { compactIban } from "../provenance/iban.ts";
 import type { Origin, Trace } from "../provenance/trace.ts";
 import { ATTACKER_IBAN, INVOICE_AMOUNT, LUMEN_IBAN } from "../world/scenario.ts";
 import type { RuleId, Verdict } from "./verdict.ts";
@@ -14,7 +15,7 @@ export type RuleCase = {
 export const LEDGER: Payee[] = [{
   id: "lumen",
   name: "Lumen Energy S.A.",
-  iban: LUMEN_IBAN,
+  iban: compactIban(LUMEN_IBAN),
   domains: ["lumen-energy.es"],
   phone: "+34 900 100 200",
   amountRange: { min: 40, max: 120 },
@@ -25,7 +26,7 @@ const fromPortal: Origin = { kind: "foreign", sourceId: "portal", via: "page", d
 const fromLookalike: Origin = { kind: "foreign", sourceId: "fake-invoice", via: "email", domain: "lumen-energia-pagos.com" };
 const fromRealSender: Origin = { kind: "foreign", sourceId: "hijacked-invoice", via: "email", domain: "lumen-energy.es" };
 
-const iban = (value: string, ...origins: Origin[]): Trace => ({ kind: "iban", value, origins });
+const iban = (value: string, ...origins: Origin[]): Trace => ({ kind: "iban", value: compactIban(value), origins });
 const amount = (value: string, ...origins: Origin[]): Trace => ({ kind: "amount", value, origins });
 const beneficiary = (value: string, ...origins: Origin[]): Trace => ({ kind: "beneficiary", value, origins });
 
