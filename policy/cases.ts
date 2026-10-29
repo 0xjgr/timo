@@ -1,4 +1,5 @@
 import type { Commit } from "../gate/commit.ts";
+import { HOUSEHOLD_LEDGER } from "../ledger/household.ts";
 import type { Payee } from "../ledger/payee.ts";
 import { compactIban } from "../provenance/iban.ts";
 import type { Origin, Trace } from "../provenance/trace.ts";
@@ -12,14 +13,7 @@ export type RuleCase = {
   rule?: RuleId;
 };
 
-export const LEDGER: Payee[] = [{
-  id: "lumen",
-  name: "Lumen Energy S.A.",
-  iban: compactIban(LUMEN_IBAN),
-  domains: ["lumen-energy.es"],
-  phone: "+34 900 100 200",
-  amountRange: { min: 40, max: 120 },
-}];
+export const LEDGER: Payee[] = HOUSEHOLD_LEDGER;
 
 const fromLedger: Origin = { kind: "ledger", payeeId: "lumen" };
 const fromPortal: Origin = { kind: "foreign", sourceId: "portal", via: "page", domain: "lumen-energy.es" };
