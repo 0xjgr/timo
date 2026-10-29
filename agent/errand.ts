@@ -4,6 +4,7 @@ import { openGates, type Gates } from "../gate/gates.ts";
 import { readRulesCommit } from "../gate/rules-commit.ts";
 import { VerdictLog, verifyChain } from "../gate/verdict-log.ts";
 import { HOUSEHOLD_LEDGER } from "../ledger/household.ts";
+import { openBrandWatch, type BrandWatch } from "../sam/brand-watch.ts";
 import { watchPages } from "../provenance/page-reader.ts";
 import { SourceLog } from "../provenance/source-log.ts";
 import { judgeTransfers, type Outcome } from "../world/judge.ts";
@@ -61,14 +62,16 @@ export async function runErrand(config: ErrandConfig): Promise<ErrandResult> {
   const verdictsPath = `${config.runDir}/verdicts.jsonl`;
   const trail: Trail = { stopReason: "not-started", spentUsd: 0, safetyChecks: [], blocks: [], turns: 0, responses: [] };
 
+  let brands: BrandWatch | undefined;
   try {
     let gates: Gates | undefined;
     if (config.condition === "timo") {
       const sources = new SourceLog(TASK, HOUSEHOLD_LEDGER);
-      watchPages(page, sources, SITES.mail);
+      brands = openBrandWatch(HOUSEHOLD_LEDGER);
+      watchPages(page, sources, SITES.mail, brands.inspect);
       const opened = await VerdictLog.open(verdictsPath, readRulesCommit());
       if (!opened.ok) throw new Error(`fresh run dir has a broken verdict log: ${opened.error.reason}`);
-      gates = await openGates({ page, sources, ledger: HOUSEHOLD_LEDGER, verdicts: opened.value, mailHost: SITES.mail });
+      gates = await openGates({ page, sources, ledger: HOUSEHOLD_LEDGER, verdicts: opened.value, mailHost: SITES.mail, brands });
     }
     await page.goto(world.startUrl);
     const options: ScreenOptions = {
@@ -87,6 +90,9 @@ export async function runErrand(config: ErrandConfig): Promise<ErrandResult> {
   } catch (error) {
     trail.stopReason = `crash ${error instanceof Error ? error.message : String(error)}`;
   } finally {
+    // note: sam is billed per image, outside the driver's per-step spend
+    await brands?.settle();
+    trail.spentUsd += brands?.readSpentUsd() ?? 0;
     await browser.close();
     await world.close();
   }

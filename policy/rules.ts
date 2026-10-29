@@ -37,10 +37,18 @@ export const RULES: Record<RuleId, Rule> = {
   },
 
   "brand-impostor": (commit, ledger) => {
-    // threat: cloned portal with a ledger payee's logo and the attacker's iban pre-filled
-    const payee = ledger.find((candidate) => candidate.id === commit.impostorOf);
-    if (!payee || payee.domains.includes(commit.pageDomain)) return null;
-    return deny("brand-impostor", `${commit.pageDomain} shows the ${payee.name} logo but is not their site`);
+    // threat: cloned portal with a ledger payee's logo, whether the form is on it or its iban is carried to the bank
+    for (const impostor of commit.impostors) {
+      const payee = ledger.find((candidate) => candidate.id === impostor.payeeId);
+      if (!payee || payee.domains.includes(impostor.domain)) continue;
+      // note: an amount from the clone sent to the ledger iban is left to amount-unbacked
+      const isCarried = commit.values.some(
+        (trace) => (trace.kind === "iban" || trace.kind === "beneficiary") && !isVouched(trace) && trace.origins.some((origin) => origin.kind === "foreign" && origin.sourceId === impostor.sourceId),
+      );
+      if (commit.pageUrl !== impostor.sourceId && !isCarried) continue;
+      return deny("brand-impostor", `${impostor.domain} shows the ${payee.name} logo but is not their site; ${payee.name} is paid to ${payee.iban} in your ledger`);
+    }
+    return null;
   },
 
   "commit-outside-gate": (commit) => {
@@ -84,6 +92,10 @@ function findClaimedPayee(commit: Commit, ledger: Payee[]): Payee | undefined {
   return ledger.find(
     (payee) => names.has(normalizeName(payee.name)) || payee.domains.some((domain) => domains.has(domain)),
   );
+}
+
+function isVouched(trace: Trace): boolean {
+  return trace.origins.some((origin) => origin.kind === "request" || origin.kind === "ledger");
 }
 
 function isAmountBacked(trace: Trace, payee: Payee): boolean {

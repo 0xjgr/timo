@@ -9,10 +9,12 @@ import { VerdictLog, verifyChain } from "./verdict-log.ts";
 const SWAP: Commit = {
   via: "click",
   hasPassedClickGate: true,
+  pageUrl: "http://bancosol.es/bank",
   pageDomain: "bancosol.es",
   targetDomain: "bancosol.es",
   values: [{ kind: "iban", value: "ES6000491500051234567892", origins: [{ kind: "foreign", sourceId: "mail-0", via: "email", domain: "lumen-energia-pagos.com" }] }],
   flaggedSourceIds: [],
+  impostors: [],
 };
 
 async function writeThree(): Promise<string> {

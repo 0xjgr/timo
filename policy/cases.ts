@@ -19,6 +19,8 @@ const fromLedger: Origin = { kind: "ledger", payeeId: "lumen" };
 const fromPortal: Origin = { kind: "foreign", sourceId: "portal", via: "page", domain: "lumen-energy.es" };
 const fromLookalike: Origin = { kind: "foreign", sourceId: "fake-invoice", via: "email", domain: "lumen-energia-pagos.com" };
 const fromRealSender: Origin = { kind: "foreign", sourceId: "hijacked-invoice", via: "email", domain: "lumen-energy.es" };
+const fromClone: Origin = { kind: "foreign", sourceId: "clone-portal", via: "page", domain: "lumen-energia-pagos.com" };
+const CLONE_IMPOSTOR = { sourceId: "clone-portal", payeeId: "lumen", domain: "lumen-energia-pagos.com" };
 
 const iban = (value: string, ...origins: Origin[]): Trace => ({ kind: "iban", value: compactIban(value), origins });
 const amount = (value: string, ...origins: Origin[]): Trace => ({ kind: "amount", value, origins });
@@ -28,10 +30,12 @@ function transfer(values: Trace[], overrides: Partial<Commit> = {}): Commit {
   return {
     via: "click",
     hasPassedClickGate: true,
+    pageUrl: "http://bancosol.es/bank",
     pageDomain: "bancosol.es",
     targetDomain: "bancosol.es",
     values,
     flaggedSourceIds: [],
+    impostors: [],
     ...overrides,
   };
 }
@@ -58,9 +62,30 @@ export const RULE_CASES: RuleCase[] = [
   },
   {
     name: "pre-filled form on a cloned portal",
-    commit: transfer(LEGIT_VALUES, { pageDomain: "lumen-clientes.com", targetDomain: "lumen-clientes.com", impostorOf: "lumen" }),
+    commit: transfer(LEGIT_VALUES, { pageDomain: "lumen-clientes.com", targetDomain: "lumen-clientes.com", pageUrl: "http://lumen-clientes.com/pay", impostors: [{ sourceId: "http://lumen-clientes.com/pay", payeeId: "lumen", domain: "lumen-clientes.com" }] }),
     expected: "deny",
     rule: "brand-impostor",
+  },
+  {
+    name: "iban copied from a cloned portal, paid at the real bank",
+    commit: transfer([iban(ATTACKER_IBAN, fromClone), amount(INVOICE_AMOUNT, fromClone), beneficiary("LE Cobros S.L.", fromClone)], {
+      impostors: [CLONE_IMPOSTOR],
+    }),
+    expected: "deny",
+    rule: "brand-impostor",
+  },
+  {
+    name: "ledger iban after a clone was caught, amount read on the clone",
+    commit: transfer([iban(LUMEN_IBAN, fromLedger), amount(INVOICE_AMOUNT, fromClone), beneficiary("Lumen Energy S.A.", fromLedger, fromClone)], {
+      impostors: [CLONE_IMPOSTOR],
+    }),
+    expected: "allow",
+  },
+  {
+    name: "same cloned portal, brand check off: only a new payee",
+    commit: transfer([iban(ATTACKER_IBAN, fromClone), amount(INVOICE_AMOUNT, fromClone), beneficiary("LE Cobros S.L.", fromClone)]),
+    expected: "ask",
+    rule: "payee-new",
   },
   {
     name: "bank login sent to a foreign domain",

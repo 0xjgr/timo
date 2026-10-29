@@ -13,19 +13,23 @@ export function readSource(url: string, text: string, mailHost: string): Source 
   return { id: url, via: "page", domain: registrableDomain(host), text };
 }
 
-export async function recordPage(page: Page, log: SourceLog, mailHost: string): Promise<void> {
+// note: called with every recorded source, e.g. the brand check that looks at its pixels
+export type SourceHook = (page: Page, source: Source) => void;
+
+export async function recordPage(page: Page, log: SourceLog, mailHost: string, onRecord?: SourceHook): Promise<void> {
   const url = page.url();
   if (!url.startsWith("http")) return;
   const text = await page.evaluate(() => document.body?.innerText ?? "");
   const source = readSource(url, text, mailHost);
   log.record(source);
   console.log(`[source] ${source.via} domain=${source.domain} id=${source.id} chars=${text.length}`);
+  onRecord?.(page, source);
 }
 
 // threat: a value the agent saw on screen must already be in the log when it reaches a form
-export function watchPages(page: Page, log: SourceLog, mailHost: string): void {
+export function watchPages(page: Page, log: SourceLog, mailHost: string, onRecord?: SourceHook): void {
   page.on("load", () => {
-    recordPage(page, log, mailHost).catch((error: unknown) => {
+    recordPage(page, log, mailHost, onRecord).catch((error: unknown) => {
       // note: a page that navigated away mid-read is read again on its own load
       console.log(`[source] skipped url=${page.url()} reason="${error instanceof Error ? error.message.split("\n")[0] : String(error)}"`);
     });

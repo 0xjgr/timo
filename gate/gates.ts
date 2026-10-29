@@ -1,5 +1,6 @@
 import type { Page, Request, Route } from "playwright";
 import type { Payee } from "../ledger/payee.ts";
+import type { BrandWatch } from "../sam/brand-watch.ts";
 import { judgeCommit } from "../policy/judge.ts";
 import type { Verdict } from "../policy/verdict.ts";
 import { registrableDomain } from "../provenance/domain.ts";
@@ -24,7 +25,7 @@ export type Gates = {
 
 const QUIET_MS = 250;
 
-type GateContext = { page: Page; sources: SourceLog; ledger: Payee[]; verdicts: VerdictLog; mailHost: string };
+type GateContext = { page: Page; sources: SourceLog; ledger: Payee[]; verdicts: VerdictLog; mailHost: string; brands?: BrandWatch };
 
 export async function openGates(context: GateContext): Promise<Gates> {
   const { page, sources, mailHost } = context;
@@ -33,6 +34,10 @@ export async function openGates(context: GateContext): Promise<Gates> {
   const inFlight = new Set<Promise<void>>();
 
   const judge = async (commit: Commit): Promise<Verdict> => {
+    if (context.brands) {
+      await context.brands.settle();
+      commit.impostors = context.brands.listImpostors();
+    }
     const verdict = judgeCommit(commit, context.ledger);
     await context.verdicts.append(commit, verdict, chooseFollowUp(verdict));
     console.log(`[gate] ${describeVerdict(verdict)} via=${commit.via} target=${commit.targetDomain} ${describeTraces(commit.values)}`);
@@ -43,16 +48,18 @@ export async function openGates(context: GateContext): Promise<Gates> {
     const form = await readPendingForm(page, trigger);
     if (!form) return null;
     // note: re-read the page first, a script may have changed its text after the load event
-    await recordPage(page, sources, mailHost);
+    await recordPage(page, sources, mailHost, context.brands?.inspect);
     const values = traceFields(form.fields, sources);
     if (values.length === 0) return null;
     const commit: Commit = {
       via: "click",
       hasPassedClickGate: true,
+      pageUrl: page.url(),
       pageDomain: registrableDomain(page.url()),
       targetDomain: registrableDomain(form.action),
       values,
       flaggedSourceIds: [],
+      impostors: [],
     };
     const verdict = await judge(commit);
     if (verdict.kind === "allow") {
@@ -82,10 +89,12 @@ export async function openGates(context: GateContext): Promise<Gates> {
     const commit: Commit = {
       via: "network",
       hasPassedClickGate: false,
+      pageUrl: request.frame().url(),
       pageDomain: registrableDomain(request.frame().url()),
       targetDomain: registrableDomain(request.url()),
       values,
       flaggedSourceIds: [],
+      impostors: [],
     };
     const verdict = await judge(commit);
     if (verdict.kind === "allow") return route.continue();

@@ -28,6 +28,7 @@ function submitTransfer(log: SourceLog, iban: string): Commit {
   return {
     via: "click",
     hasPassedClickGate: true,
+    pageUrl: "http://bancosol.es/bank",
     pageDomain: "bancosol.es",
     targetDomain: "bancosol.es",
     values: [
@@ -36,6 +37,7 @@ function submitTransfer(log: SourceLog, iban: string): Commit {
       log.traceValue("amount", "84,20"),
     ],
     flaggedSourceIds: [],
+    impostors: [],
   };
 }
 
