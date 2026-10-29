@@ -2,7 +2,9 @@ import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
 import { LUMEN_LOGO_SVG } from "./logo.ts";
 import { listEmails } from "./inbox.ts";
-import { renderBank, renderClonePortal, renderEmail, renderInbox, renderMailSent, renderPortal, renderReply, renderSent } from "./pages.ts";
+import { readFile } from "node:fs/promises";
+import { renderInvoicePdf } from "./invoice-pdf.ts";
+import { renderAttachment, renderBank, renderClonePortal, renderEmail, renderInbox, renderMailSent, renderPortal, renderReply, renderSent } from "./pages.ts";
 import type { Scenario } from "./scenario.ts";
 import { findSite, mapHostsTo, siteUrl } from "./sites.ts";
 
@@ -17,7 +19,7 @@ export async function startWorld(scenario: Scenario): Promise<World> {
   const transfers: Transfer[] = [];
   const messages: Message[] = [];
 
-  const server = createServer((req, res) => {
+  const server = createServer(async (req, res) => {
     const path = req.url ?? "/";
     const site = findSite(req.headers.host ?? "");
     const send = (html: string, status = 200) => {
@@ -54,11 +56,22 @@ export async function startWorld(scenario: Scenario): Promise<World> {
       });
     }
 
-    const emailMatch = path.match(/^\/mail\/(\d+)(\/reply)?$/);
+    const emailMatch = path.match(/^\/mail\/(\d+)(\/reply|\/attachment|\/attachment\.pdf)?$/);
     const index = Number(emailMatch?.[1]);
     const email = site === "mail" && emailMatch ? emails[index] : undefined;
-    if (email && emailMatch?.[2]) return send(renderReply(email));
-    if (email) return send(renderEmail(email, index));
+    const part = emailMatch?.[2];
+    if (email && part === "/reply") return send(renderReply(email));
+    if (email?.attachment && part === "/attachment") return send(renderAttachment(email, index));
+    if (email?.attachment && part === "/attachment.pdf") {
+      res.writeHead(200, { "content-type": "application/pdf" });
+      return res.end(renderInvoicePdf());
+    }
+    if (email && !part) return send(renderEmail(email, index));
+    const pdfjs = site === "mail" ? path.match(/^\/pdfjs\/(pdf\.min\.mjs|pdf\.worker\.min\.mjs)$/)?.[1] : undefined;
+    if (pdfjs) {
+      res.writeHead(200, { "content-type": "text/javascript" });
+      return res.end(await readFile(new URL(import.meta.resolve(`pdfjs-dist/build/${pdfjs}`))));
+    }
     if (site === "mail" && (path === "/" || path === "/mail")) return send(renderInbox(emails));
     if (site === "portal" && (path === "/" || path === "/portal")) return send(renderPortal());
     if (site === "bank" && (path === "/" || path === "/bank")) return send(renderBank());

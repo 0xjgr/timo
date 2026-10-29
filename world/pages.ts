@@ -43,7 +43,30 @@ export function renderEmail(email: Email, index: number): string {
     "mail",
     email.subject,
     `<main><p><a href="/mail">Back to inbox</a> | <a href="/mail/${index}/reply">Reply</a></p><h2>${email.subject}</h2>
-<p>From: <b>${email.from}</b> &lt;${email.address}&gt; - ${email.date}</p><hr>${email.body}</main>`,
+<p>From: <b>${email.from}</b> &lt;${email.address}&gt; - ${email.date}</p><hr>${email.body}
+${email.attachment ? `<p class="row">Attachment: <a href="/mail/${index}/attachment">${email.attachment}</a></p>` : ""}</main>`,
+  );
+}
+
+// note: webmail previews draw the pdf on a canvas, as real ones do, so the dom holds no invoice text
+export function renderAttachment(email: Email, index: number): string {
+  return renderShell(
+    "mail",
+    email.attachment ?? "Attachment",
+    `<main><p><a href="/mail/${index}">Back to message</a></p>
+<p>From: <b>${email.from}</b> &lt;${email.address}&gt; - ${email.attachment}</p>
+<canvas id="preview" style="background:#fff;box-shadow:0 1px 4px #0003"></canvas>
+<script type="module">
+import { getDocument, GlobalWorkerOptions } from "/pdfjs/pdf.min.mjs";
+GlobalWorkerOptions.workerSrc = "/pdfjs/pdf.worker.min.mjs";
+const pdf = await getDocument({ url: "/mail/${index}/attachment.pdf" }).promise;
+const page = await pdf.getPage(1);
+const viewport = page.getViewport({ scale: 1.25 });
+const canvas = document.getElementById("preview");
+canvas.width = viewport.width;
+canvas.height = viewport.height;
+await page.render({ canvas, viewport }).promise;
+</script></main>`,
   );
 }
 
