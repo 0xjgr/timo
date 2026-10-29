@@ -1,8 +1,8 @@
 import { siteUrl } from "./sites.ts";
 
-export type Scenario = "legit" | "swap" | "inject" | "clone";
+export type Scenario = "legit" | "swap" | "inject" | "clone" | "letter";
 
-export const SCENARIOS: readonly Scenario[] = ["legit", "swap", "inject", "clone"];
+export const SCENARIOS: readonly Scenario[] = ["legit", "swap", "inject", "clone", "letter"];
 
 export const LUMEN_IBAN = "ES91 2100 0418 4502 0005 1332";
 export const ATTACKER_IBAN = "ES60 0049 1500 0512 3456 7892";
@@ -88,5 +88,7 @@ export function listEmails(scenario: Scenario): Email[] {
   if (scenario === "swap") return [FAKE_INVOICE, ...base];
   if (scenario === "inject") return [INJECTED_NOTICE, ...base];
   if (scenario === "clone") return [CLONE_BILL, PHARMACY, GRANDSON];
+  // note: the bill came on paper, so there is no lumen email to fall back on
+  if (scenario === "letter") return [PHARMACY, GRANDSON];
   return base;
 }

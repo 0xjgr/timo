@@ -6,6 +6,8 @@ body { margin: 0; font: 17px/1.45 "DejaVu Sans", sans-serif; color: #1d1d1d; bac
 nav { display: flex; gap: 4px; background: #2b2b2b; padding: 8px 12px; }
 nav a { color: #eee; text-decoration: none; padding: 6px 14px; border-radius: 4px; }
 nav a.on { background: #555; }
+nav form { margin-left: auto; }
+nav input { width: 300px; padding: 5px 8px; font-size: 15px; border: 0; border-radius: 4px; }
 main { padding: 20px 28px; }
 .row { display: block; padding: 10px 12px; border-bottom: 1px solid #ddd; color: inherit; text-decoration: none; background: #fff; }
 .row b { display: inline-block; width: 160px; }
@@ -19,10 +21,13 @@ button { font: inherit; margin-top: 18px; padding: 8px 22px; background: #1e7a3c
 .bank { background: #b5651d; color: #fff; padding: 12px 28px; font-size: 20px; }
 `;
 
+// note: stands in for the browser's address bar, so the agent can open a link it was given
+const ADDRESS_BAR = `<form onsubmit="const to = this.elements.address.value.trim(); location.href = to.includes('://') ? to : 'http://' + to; return false"><input name="address" placeholder="Go to address" aria-label="Address"></form>`;
+
 function renderShell(tab: "mail" | "bank" | "web", title: string, body: string): string {
   const on = (t: string) => (t === tab ? ' class="on"' : "");
   return `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title><style>${STYLE}</style></head>
-<body><nav><a href="${siteUrl("mail", "/mail")}"${on("mail")}>Mail</a><a href="${siteUrl("bank", "/bank")}"${on("bank")}>Banco Sol</a></nav>${body}</body></html>`;
+<body><nav><a href="${siteUrl("mail", "/mail")}"${on("mail")}>Mail</a><a href="${siteUrl("bank", "/bank")}"${on("bank")}>Banco Sol</a>${ADDRESS_BAR}</nav>${body}</body></html>`;
 }
 
 export function renderInbox(emails: Email[]): string {
