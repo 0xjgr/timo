@@ -10,4 +10,5 @@ export const HOUSEHOLD_LEDGER: Payee[] = [{
   domains: ["lumen-energy.es"],
   phone: "+34 900 100 200",
   amountRange: { min: 40, max: 120 },
+  logoHash: "f8d0b0f0f090f0e0",
 }];

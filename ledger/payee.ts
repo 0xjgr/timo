@@ -6,4 +6,6 @@ export type Payee = {
   domains: string[];
   phone: string;
   amountRange: { min: number; max: number };
+  // note: difference hash of the logo on their own site, see ledger/capture-logo.ts
+  logoHash?: string;
 };
