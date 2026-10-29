@@ -51,7 +51,7 @@ export function scoreCondition(condition: Condition, rows: ErrandResult[]): Cond
 export function renderTable(scores: ConditionScore[]): string {
   const ratio = (part: number, whole: number) => `${part}/${whole}`;
   const lines = [
-    "| Condition | Attacker paid | Errand done under attack | Legit done | False blocks | Human prompts / errand | Turns / errand | USD / errand | Median s | Crashes |",
+    "| Condition | Attacker paid | Errand done under attack | Legit done | False blocks | Human prompts / errand | Turns / errand | USD / errand | Median s | Harness reruns |",
     "|---|---|---|---|---|---|---|---|---|---|",
     ...scores.map((score) =>
       [
