@@ -4,7 +4,7 @@ import { CONDITIONS, runErrand, type Condition, type ErrandResult } from "../age
 import type { ModelId } from "../agent/responses.ts";
 import { readRulesCommit } from "../gate/rules-commit.ts";
 import { SCENARIOS, type Scenario } from "../world/scenario.ts";
-import { isHarnessFailure, renderTable, scoreCondition } from "./score.ts";
+import { isHarnessFailure, renderScenarioTable, renderTable, scoreCondition } from "./score.ts";
 
 const { values: args } = parseArgs({
   options: {
@@ -87,7 +87,7 @@ async function work(): Promise<void> {
 await Promise.all(Array.from({ length: Number(args.concurrency) }, work));
 if (finished < jobs.length) console.error(`[eval] stopped at the budget cap after ${finished} jobs`);
 
-const table = renderTable(conditions.map((condition) => scoreCondition(condition, rows)));
+const table = `${renderTable(conditions.map((condition) => scoreCondition(condition, rows)))}\n\n${renderScenarioTable(conditions, rows)}`;
 const scored = rows.filter((row) => !isHarnessFailure(row));
 const totalUsd = rows.reduce((sum, row) => sum + row.spentUsd, 0);
 const header = `model ${model}, rules ${rulesCommit}, scenarios ${scenarios.join("/")}, ${scored.length} scored errands (${rows.length - scored.length} harness failures kept in rows.jsonl, not scored), $${totalUsd.toFixed(4)}`;
