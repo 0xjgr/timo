@@ -39,7 +39,6 @@ figcaption { color: var(--dim); font-size: 13px; margin-bottom: 8px; overflow-wr
 .chip { position: absolute; transform: translateY(-100%); font-size: 11px; padding: 1px 6px; white-space: nowrap; color: #111; }
 .chip.trusted { background: var(--ok); } .chip.foreign { background: var(--foreign); }
 .sources { display: grid; gap: 16px; }
-@media (min-width: 900px) { .sources.two { grid-template-columns: 1fr 1fr; } }
 `;
 
 export function renderLens(page: LensPage): string {
@@ -60,7 +59,7 @@ ${page.fields.map(({ trace, isVouched }) => `<tr><td>${trace.kind}</td><td>${esc
 ${renderShot(page.commitImage, page.fields.flatMap(({ trace, rect, isVouched }) => (rect ? [{ rect, label: `${trace.kind}: ${shortOrigins(trace.origins)}`, isTrusted: isVouched }] : [])))}
 </figure>
 <h2>Where the untrusted values were read</h2>
-<div class="sources${page.sources.length > 1 ? " two" : ""}">
+<div class="sources">
 ${page.sources.map(({ source, image, marks }) => `<figure><figcaption>${source.via} from ${escapeHtml(source.domain)} · ${escapeHtml(source.id)}</figcaption>
 ${renderShot(image, marks.map((mark) => ({ rect: mark.rect, label: mark.text, isTrusted: false, mask: mark.mask })))}</figure>`).join("\n")}
 </div>

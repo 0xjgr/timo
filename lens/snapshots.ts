@@ -17,6 +17,8 @@ export class SnapshotBook {
     // note: a capture racing a navigation can hang; the lens can do without one page
     const png = await page.screenshot({ timeout: 5000 });
     const marks = await page.evaluate(findValueMarks);
+    // threat: the agent clicked on before the capture landed, so these pixels belong to the next page
+    if (page.url() !== source.id) throw new Error(`page moved on to ${page.url()}`);
     this.#latest.set(source.id, { source, png, marks });
     return png;
   }

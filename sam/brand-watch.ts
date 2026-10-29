@@ -49,7 +49,11 @@ export function openBrandWatch(ledger: Payee[]): BrandWatch {
     if (inspected.has(key)) return;
     inspected.add(key);
     const running = check(capture, source)
-      .catch((error: unknown) => console.log(`[brand] skipped id=${source.id} reason="${error instanceof Error ? error.message.split("\n")[0] : String(error)}"`))
+      .catch((error: unknown) => {
+        // note: no capture means no check, so the next load of this source tries again
+        inspected.delete(key);
+        console.log(`[brand] skipped id=${source.id} reason="${error instanceof Error ? error.message.split("\n")[0] : String(error)}"`);
+      })
       .finally(() => inFlight.delete(running));
     inFlight.add(running);
   };
