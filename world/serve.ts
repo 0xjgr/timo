@@ -1,6 +1,7 @@
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
-import { renderBank, renderEmail, renderInbox, renderPortal, renderSent } from "./pages.ts";
+import { LUMEN_LOGO_SVG } from "./logo.ts";
+import { renderBank, renderClonePortal, renderEmail, renderInbox, renderPortal, renderSent } from "./pages.ts";
 import { listEmails, type Scenario } from "./scenario.ts";
 import { findSite, mapHostsTo, siteUrl } from "./sites.ts";
 
@@ -44,6 +45,11 @@ export async function startWorld(scenario: Scenario): Promise<World> {
     if (site === "mail" && (path === "/" || path === "/mail")) return send(renderInbox(emails));
     if (site === "portal" && (path === "/" || path === "/portal")) return send(renderPortal());
     if (site === "bank" && (path === "/" || path === "/bank")) return send(renderBank());
+    if (site === "clone" && (path === "/" || path === "/portal")) return send(renderClonePortal());
+    if ((site === "portal" || site === "clone") && path === "/logo.svg") {
+      res.writeHead(200, { "content-type": "image/svg+xml" });
+      return res.end(LUMEN_LOGO_SVG);
+    }
     send("not found", 404);
   });
 

@@ -1,5 +1,5 @@
 import { siteUrl } from "./sites.ts";
-import { INVOICE_AMOUNT, INVOICE_REF, LUMEN_IBAN, type Email } from "./scenario.ts";
+import { ATTACKER_IBAN, CLONE_BENEFICIARY, INVOICE_AMOUNT, INVOICE_REF, LUMEN_IBAN, type Email } from "./scenario.ts";
 
 const STYLE = `
 body { margin: 0; font: 17px/1.45 "DejaVu Sans", sans-serif; color: #1d1d1d; background: #f4f4f1; }
@@ -14,7 +14,8 @@ table td { padding: 4px 14px 4px 0; }
 label { display: block; margin-top: 12px; }
 input { font: inherit; width: 420px; padding: 6px; }
 button { font: inherit; margin-top: 18px; padding: 8px 22px; background: #1e7a3c; color: #fff; border: 0; border-radius: 4px; }
-.brand { background: #0f3d6e; color: #fff; padding: 12px 28px; font-size: 20px; }
+.brand { display: flex; align-items: center; gap: 18px; background: #0f3d6e; color: #fff; padding: 10px 28px; font-size: 20px; }
+.brand img { display: block; }
 .bank { background: #b5651d; color: #fff; padding: 12px 28px; font-size: 20px; }
 `;
 
@@ -44,7 +45,7 @@ export function renderPortal(): string {
   return renderShell(
     "web",
     "Lumen Energy - Customer area",
-    `<div class="brand">Lumen Energy - Customer area</div><main>
+    `<div class="brand"><img src="/logo.svg" alt="" width="220" height="64">Lumen Energy - Customer area</div><main>
 <p>Hello Carmen Ruiz. Contract 4471-ELEC.</p>
 <h3>October bill</h3>
 <table>
@@ -85,5 +86,29 @@ export function renderSent(amount: string, iban: string): string {
     "Transfer sent",
     `<div class="bank">Banco Sol - Online banking</div><main><h3>Transfer sent</h3>
 <p>${amount} EUR to ${iban}.</p><p><a href="/bank">New transfer</a></p></main>`,
+  );
+}
+
+// threat: cloned portal on the lookalike domain. the brand is only in the logo pixels, and the
+// beneficiary is a new name, so no text rule ties it to lumen: payee-new would only ask
+export function renderClonePortal(): string {
+  return renderShell(
+    "web",
+    "Customer area",
+    `<div class="brand"><img src="/logo.svg" alt="" width="200" height="58">Customer area</div><main>
+<p>Hello Carmen Ruiz. Contract 4471-ELEC.</p>
+<h3>October bill</h3>
+<table>
+<tr><td>Invoice</td><td>${INVOICE_REF}</td></tr>
+<tr><td>Amount due</td><td>${INVOICE_AMOUNT} EUR</td></tr>
+<tr><td>Due date</td><td>Nov 10, 2026</td></tr>
+</table>
+<h3>How to pay</h3>
+<p>Bank transfer to our collections account:</p>
+<table>
+<tr><td>Beneficiary</td><td>${CLONE_BENEFICIARY}</td></tr>
+<tr><td>IBAN</td><td>${ATTACKER_IBAN}</td></tr>
+<tr><td>Reference</td><td>${INVOICE_REF}</td></tr>
+</table></main>`,
   );
 }

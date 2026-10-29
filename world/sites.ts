@@ -3,6 +3,8 @@ export const SITES = {
   mail: "mail.es",
   portal: "lumen-energy.es",
   bank: "bancosol.es",
+  // threat: the attacker's lookalike domain, for the fake invoice and the cloned portal
+  clone: "lumen-energia-pagos.com",
 } as const;
 
 export type Site = keyof typeof SITES;
