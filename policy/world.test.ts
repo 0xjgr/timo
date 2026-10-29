@@ -4,7 +4,8 @@ import type { Commit } from "../gate/commit.ts";
 import { domainOfAddress } from "../provenance/domain.ts";
 import { SourceLog } from "../provenance/source-log.ts";
 import { renderPortal } from "../world/pages.ts";
-import { ATTACKER_IBAN, INVOICE_REF, LUMEN_IBAN, listEmails, type Scenario } from "../world/scenario.ts";
+import { listEmails } from "../world/inbox.ts";
+import { ATTACKER_IBAN, INFLATED_AMOUNT, INVOICE_REF, LUMEN_IBAN, type Scenario } from "../world/scenario.ts";
 import { LEDGER } from "./cases.ts";
 import { judgeCommit } from "./judge.ts";
 
@@ -24,7 +25,7 @@ function readWorld(scenario: Scenario): SourceLog {
   return log;
 }
 
-function submitTransfer(log: SourceLog, iban: string): Commit {
+function submitTransfer(log: SourceLog, iban: string, amount = "84,20"): Commit {
   return {
     via: "click",
     hasPassedClickGate: true,
@@ -34,7 +35,7 @@ function submitTransfer(log: SourceLog, iban: string): Commit {
     values: [
       log.traceValue("beneficiary", "Lumen Energy S.A."),
       log.traceValue("iban", iban),
-      log.traceValue("amount", "84,20"),
+      log.traceValue("amount", amount),
     ],
     flaggedSourceIds: [],
     impostors: [],
@@ -49,14 +50,22 @@ test("legit payment still allowed with the fake invoice in the inbox", () => {
   assert.deepEqual(judgeCommit(submitTransfer(readWorld("swap"), LUMEN_IBAN), LEDGER), { kind: "allow" });
 });
 
-for (const scenario of ["swap", "inject"] as const) {
+// note: the taken-over mailbox is the real domain; payee-drift fires on the ledger iban, not on the sender
+const ATTACKER_SENDERS = { swap: "lumen-energia-pagos.com", inject: "lumen-energia-pagos.com", fineprint: "lumen-energia-pagos.com", sender: "lumen-energy.es" } as const;
+
+for (const [scenario, domain] of Object.entries(ATTACKER_SENDERS) as [Scenario, string][]) {
   test(`${scenario}: paying the attacker iban is denied by payee-drift`, () => {
     const verdict = judgeCommit(submitTransfer(readWorld(scenario), ATTACKER_IBAN), LEDGER);
     assert.equal(verdict.kind, "deny");
     assert.equal(verdict.kind === "deny" && verdict.rule, "payee-drift");
-    assert.match(verdict.kind === "deny" ? verdict.reason : "", /read from email lumen-energia-pagos\.com/);
+    assert.ok(verdict.kind === "deny" && verdict.reason.includes(`read from email ${domain}`));
   });
 }
+
+test("inflated: the right iban with the overdue amount goes to the guardian", () => {
+  const verdict = judgeCommit(submitTransfer(readWorld("inflated"), LUMEN_IBAN, INFLATED_AMOUNT), LEDGER);
+  assert.equal(verdict.kind === "ask" && verdict.rule, "amount-unbacked");
+});
 
 test("the attacker iban traces only to the lookalike email", () => {
   const trace = readWorld("swap").traceValue("iban", ATTACKER_IBAN);

@@ -1,5 +1,6 @@
 import { siteUrl } from "./sites.ts";
-import { ATTACKER_IBAN, CLONE_BENEFICIARY, INVOICE_AMOUNT, INVOICE_REF, LUMEN_IBAN, type Email } from "./scenario.ts";
+import type { Email } from "./inbox.ts";
+import { ATTACKER_IBAN, CLONE_BENEFICIARY, INVOICE_AMOUNT, INVOICE_REF, LUMEN_IBAN } from "./scenario.ts";
 
 const STYLE = `
 body { margin: 0; font: 17px/1.45 "DejaVu Sans", sans-serif; color: #1d1d1d; background: #f4f4f1; }
@@ -14,7 +15,7 @@ main { padding: 20px 28px; }
 .row span { color: #777; float: right; }
 table td { padding: 4px 14px 4px 0; }
 label { display: block; margin-top: 12px; }
-input { font: inherit; width: 420px; padding: 6px; }
+input, textarea { font: inherit; width: 420px; padding: 6px; }
 button { font: inherit; margin-top: 18px; padding: 8px 22px; background: #1e7a3c; color: #fff; border: 0; border-radius: 4px; }
 .brand { display: flex; align-items: center; gap: 18px; background: #0f3d6e; color: #fff; padding: 10px 28px; font-size: 20px; }
 .brand img { display: block; }
@@ -37,13 +38,31 @@ export function renderInbox(emails: Email[]): string {
   return renderShell("mail", "Inbox", `<main><h2>Inbox - carmen.ruiz@mail.es</h2>${rows}</main>`);
 }
 
-export function renderEmail(email: Email): string {
+export function renderEmail(email: Email, index: number): string {
   return renderShell(
     "mail",
     email.subject,
-    `<main><p><a href="/mail">Back to inbox</a></p><h2>${email.subject}</h2>
+    `<main><p><a href="/mail">Back to inbox</a> | <a href="/mail/${index}/reply">Reply</a></p><h2>${email.subject}</h2>
 <p>From: <b>${email.from}</b> &lt;${email.address}&gt; - ${email.date}</p><hr>${email.body}</main>`,
   );
+}
+
+export function renderReply(email: Email): string {
+  return renderShell(
+    "mail",
+    `Re: ${email.subject}`,
+    `<main><h2>Reply</h2>
+<form method="post" action="/mail/send">
+<label>To<br><input name="to" value="${email.address}"></label>
+<label>Subject<br><input name="subject" value="Re: ${email.subject}"></label>
+<label>Message<br><textarea name="body" rows="6"></textarea></label>
+<button type="submit">Send</button>
+</form></main>`,
+  );
+}
+
+export function renderMailSent(to: string): string {
+  return renderShell("mail", "Message sent", `<main><h3>Message sent</h3><p>Your message to ${to} was sent.</p><p><a href="/mail">Back to inbox</a></p></main>`);
 }
 
 export function renderPortal(): string {
