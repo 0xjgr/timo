@@ -13,8 +13,9 @@ export function readSource(url: string, text: string, mailHost: string): Source 
   return { id: url, via: "page", domain: registrableDomain(host), text };
 }
 
-// note: called with every recorded source, e.g. the brand check that looks at its pixels
-export type SourceHook = (page: Page, source: Source) => void;
+// note: called with every recorded source, e.g. the brand check that looks at its pixels.
+// shownAt is the page url that displays it, when that is not the source's own url (a pdf preview)
+export type SourceHook = (page: Page, source: Source, shownAt?: string) => void;
 
 export async function recordPage(page: Page, log: SourceLog, mailHost: string, onRecord?: SourceHook): Promise<void> {
   const url = page.url();

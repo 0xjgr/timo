@@ -8,6 +8,7 @@ import { openBrandWatch, type BrandWatch } from "../sam/brand-watch.ts";
 import { openLens } from "../lens/lens.ts";
 import { SnapshotBook } from "../lens/snapshots.ts";
 import { watchPages, type SourceHook } from "../provenance/page-reader.ts";
+import { watchPdfs } from "../provenance/pdf-reader.ts";
 import { SourceLog } from "../provenance/source-log.ts";
 import { judgeErrand, type Outcome } from "../world/judge.ts";
 import { GOALS, type Scenario } from "../world/scenario.ts";
@@ -75,8 +76,8 @@ export async function runErrand(config: ErrandConfig): Promise<ErrandResult> {
       const book = new SnapshotBook();
       const watch = brands;
       // note: one screenshot per load serves both the lens and the brand check
-      const onRecord: SourceHook = (page, source) => {
-        const shot = book.capture(page, source);
+      const onRecord: SourceHook = (page, source, shownAt) => {
+        const shot = book.capture(page, source, shownAt);
         shot.catch((error: unknown) => console.log(`[lens] no snapshot id=${source.id} reason="${error instanceof Error ? error.message.split("\n")[0] : String(error)}"`));
         watch.inspect(source, () => shot);
       };
@@ -89,6 +90,7 @@ export async function runErrand(config: ErrandConfig): Promise<ErrandResult> {
         console.log(`[source] photo domain=${photo.domain} id=${photo.id}`);
       }
       watchPages(page, sources, SITES.mail, onRecord);
+      watchPdfs(page, sources, SITES.mail, onRecord);
       const opened = await VerdictLog.open(verdictsPath, readRulesCommit());
       if (!opened.ok) throw new Error(`fresh run dir has a broken verdict log: ${opened.error.reason}`);
       gates = await openGates({ page, sources, ledger: HOUSEHOLD_LEDGER, verdicts: opened.value, mailHost: SITES.mail, brands, onRecord,
