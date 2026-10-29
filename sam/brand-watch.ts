@@ -9,6 +9,7 @@ export type LogoMatch = { payeeId: string; region: Region; distance: number };
 
 export type BrandWatch = {
   inspect: (page: Page, source: Source) => void;
+  inspectImage: (png: Buffer, source: Source) => void;
   // note: the gates wait for inspections in flight, so a fast click cannot beat the check
   settle: () => Promise<void>;
   listImpostors: () => Impostor[];
@@ -22,8 +23,8 @@ export function openBrandWatch(ledger: Payee[]): BrandWatch {
   const inFlight = new Set<Promise<void>>();
   let spentUsd = 0;
 
-  const check = async (page: Page, source: Source): Promise<void> => {
-    const png = await page.screenshot();
+  const check = async (capture: () => Promise<Buffer>, source: Source): Promise<void> => {
+    const png = await capture();
     spentUsd += SAM_USD_PER_IMAGE;
     const segmentation = await segmentImage(png, "logo");
     if (!segmentation.ok) {
@@ -40,18 +41,21 @@ export function openBrandWatch(ledger: Payee[]): BrandWatch {
     console.log(`[brand] impostor domain=${source.domain} logo=${match.payeeId} distance=${match.distance}`);
   };
 
+  const start = (capture: () => Promise<Buffer>, source: Source): void => {
+    // note: a ledger payee's own domain may show its own logo
+    if (ledger.some((payee) => payee.domains.includes(source.domain))) return;
+    const key = `${source.id} ${source.domain}`;
+    if (inspected.has(key)) return;
+    inspected.add(key);
+    const running = check(capture, source)
+      .catch((error: unknown) => console.log(`[brand] skipped id=${source.id} reason="${error instanceof Error ? error.message.split("\n")[0] : String(error)}"`))
+      .finally(() => inFlight.delete(running));
+    inFlight.add(running);
+  };
+
   return {
-    inspect: (page, source) => {
-      // note: a ledger payee's own domain may show its own logo
-      if (ledger.some((payee) => payee.domains.includes(source.domain))) return;
-      const key = `${source.id} ${source.domain}`;
-      if (inspected.has(key)) return;
-      inspected.add(key);
-      const running = check(page, source)
-        .catch((error: unknown) => console.log(`[brand] skipped id=${source.id} reason="${error instanceof Error ? error.message.split("\n")[0] : String(error)}"`))
-        .finally(() => inFlight.delete(running));
-      inFlight.add(running);
-    },
+    inspect: (page, source) => start(() => page.screenshot(), source),
+    inspectImage: (png, source) => start(async () => png, source),
     settle: async () => {
       while (inFlight.size > 0) await Promise.all(inFlight);
     },
