@@ -8,7 +8,9 @@
   "scripts": {
     "test": "node --test",
     "typecheck": "tsc --noEmit",
-    "verify": "node gate/verify.ts"
+    "verify": "node gate/verify.ts",
+    "errand": "node --env-file=.env agent/run.ts",
+    "eval": "node --env-file=.env eval/run-eval.ts"
   },
   "devDependencies": {
     "@types/node": "26.6.5",

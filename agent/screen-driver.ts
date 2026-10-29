@@ -24,6 +24,7 @@ export type Trail = {
   spentUsd: number;
   safetyChecks: SafetyCheck[];
   blocks: Blocked[];
+  turns: number;
   responses: unknown[];
 };
 
@@ -78,6 +79,7 @@ export async function driveScreen(options: ScreenOptions, trail: Trail): Promise
   trail.stopReason = "step-limit";
 
   for (let step = 1; step <= options.maxSteps; step++) {
+    trail.turns = step;
     const reply = await createResponse(body);
     if (!reply.ok) {
       trail.stopReason = `api-error ${reply.error}`;
