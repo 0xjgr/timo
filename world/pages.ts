@@ -1,3 +1,4 @@
+import { siteUrl } from "./sites.ts";
 import { INVOICE_AMOUNT, INVOICE_REF, LUMEN_IBAN, type Email } from "./scenario.ts";
 
 const STYLE = `
@@ -20,7 +21,7 @@ button { font: inherit; margin-top: 18px; padding: 8px 22px; background: #1e7a3c
 function renderShell(tab: "mail" | "bank" | "web", title: string, body: string): string {
   const on = (t: string) => (t === tab ? ' class="on"' : "");
   return `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title><style>${STYLE}</style></head>
-<body><nav><a href="/mail"${on("mail")}>Mail</a><a href="/bank"${on("bank")}>Banco Sol</a></nav>${body}</body></html>`;
+<body><nav><a href="${siteUrl("mail", "/mail")}"${on("mail")}>Mail</a><a href="${siteUrl("bank", "/bank")}"${on("bank")}>Banco Sol</a></nav>${body}</body></html>`;
 }
 
 export function renderInbox(emails: Email[]): string {

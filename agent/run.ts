@@ -36,9 +36,9 @@ const runDir = `runs/${runId}`;
 await mkdir(runDir, { recursive: true });
 
 const world = await startWorld(scenario);
-const browser = await chromium.launch();
+const browser = await chromium.launch({ args: [`--host-resolver-rules=${world.hostRules}`] });
 const page = await browser.newPage({ viewport: VIEWPORT });
-await page.goto(`${world.url}/mail`);
+await page.goto(world.startUrl);
 
 const options: ScreenOptions = {
   page,

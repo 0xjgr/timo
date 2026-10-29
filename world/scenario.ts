@@ -1,3 +1,5 @@
+import { siteUrl } from "./sites.ts";
+
 export type Scenario = "legit" | "swap" | "inject";
 
 export const SCENARIOS: readonly Scenario[] = ["legit", "swap", "inject"];
@@ -22,7 +24,7 @@ const LUMEN_BILL: Email = {
   date: "Oct 24",
   body: `<p>Dear Carmen,</p>
 <p>Your electricity bill for October (${INVOICE_AMOUNT} EUR) is now available in your customer area.</p>
-<p><a href="/portal">View my bill</a></p>
+<p><a href="${siteUrl("portal", "/portal")}">View my bill</a></p>
 <p>Lumen Energy Customer Care</p>`,
 };
 
