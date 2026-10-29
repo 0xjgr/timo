@@ -1,9 +1,16 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { parseArgs } from "node:util";
 import { chromium } from "playwright";
+import { openGates, type Gates } from "../gate/gates.ts";
+import { readRulesCommit } from "../gate/rules-commit.ts";
+import { VerdictLog, verifyChain } from "../gate/verdict-log.ts";
+import { HOUSEHOLD_LEDGER } from "../ledger/household.ts";
+import { watchPages } from "../provenance/page-reader.ts";
+import { SourceLog } from "../provenance/source-log.ts";
 import { judgeTransfers } from "../world/judge.ts";
 import { SCENARIOS, type Scenario } from "../world/scenario.ts";
 import { startWorld } from "../world/serve.ts";
+import { SITES } from "../world/sites.ts";
 import { countInputTokens, type ModelId } from "./responses.ts";
 import { driveScreen, firstScreenshot, startRequest, type ScreenOptions, type Trail } from "./screen-driver.ts";
 
@@ -24,6 +31,7 @@ const { values: args } = parseArgs({
     effort: { type: "string", default: "low" },
     count: { type: "boolean", default: false },
     ack: { type: "boolean", default: false },
+    unguarded: { type: "boolean", default: false },
   },
 });
 
@@ -31,13 +39,22 @@ const model = args.model as ModelId;
 const scenario = args.scenario as Scenario;
 if (!SCENARIOS.includes(scenario)) throw new Error(`unknown scenario ${scenario}`);
 
-const runId = `${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}-${model}-${scenario}`;
+const runId = `${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}-${model}-${scenario}${args.unguarded ? "-unguarded" : ""}`;
 const runDir = `runs/${runId}`;
 await mkdir(runDir, { recursive: true });
 
 const world = await startWorld(scenario);
 const browser = await chromium.launch({ args: [`--host-resolver-rules=${world.hostRules}`] });
 const page = await browser.newPage({ viewport: VIEWPORT });
+const verdictsPath = `${runDir}/verdicts.jsonl`;
+let gates: Gates | undefined;
+if (!args.unguarded) {
+  const sources = new SourceLog(TASK, HOUSEHOLD_LEDGER);
+  watchPages(page, sources, SITES.mail);
+  const opened = await VerdictLog.open(verdictsPath, readRulesCommit());
+  if (!opened.ok) throw new Error(`fresh run dir has a broken verdict log: ${opened.error.reason}`);
+  gates = await openGates({ page, sources, ledger: HOUSEHOLD_LEDGER, verdicts: opened.value, mailHost: SITES.mail });
+}
 await page.goto(world.startUrl);
 
 const options: ScreenOptions = {
@@ -50,8 +67,9 @@ const options: ScreenOptions = {
   budgetUsd: Number(args.budget),
   isAck: args.ack,
   runDir,
+  gates,
 };
-const trail: Trail = { stopReason: "not-started", spentUsd: 0, safetyChecks: [], responses: [] };
+const trail: Trail = { stopReason: "not-started", spentUsd: 0, safetyChecks: [], blocks: [], responses: [] };
 
 try {
   if (args.count) {
@@ -67,8 +85,13 @@ try {
   const outcome = judgeTransfers(world.transfers);
   const checkCounts: Record<string, number> = {};
   for (const check of trail.safetyChecks) checkCounts[check.code] = (checkCounts[check.code] ?? 0) + 1;
-  console.log(`[run] ${scenario} model=${model} outcome=${outcome} stop="${trail.stopReason}" usd=${trail.spentUsd.toFixed(4)} checks=${JSON.stringify(checkCounts)}`);
-  const summary = { runId, model, scenario, outcome, ...trail, responses: undefined, transfers: world.transfers };
+  const guard = args.unguarded ? "unguarded" : "timo";
+  console.log(`[run] ${scenario} guard=${guard} model=${model} outcome=${outcome} blocks=${trail.blocks.length} stop="${trail.stopReason}" usd=${trail.spentUsd.toFixed(4)} checks=${JSON.stringify(checkCounts)}`);
+  if (gates) {
+    const chain = verifyChain(await readFile(verdictsPath, "utf8").catch(() => ""));
+    console.log(chain.ok ? `[verify] ok entries=${chain.value.length}` : `[verify] broken line=${chain.error.line}`);
+  }
+  const summary = { runId, model, scenario, guard, outcome, ...trail, responses: undefined, transfers: world.transfers };
   await writeFile(`${runDir}/summary.json`, JSON.stringify(summary, null, 2));
   await writeFile(`${runDir}/responses.json`, JSON.stringify(trail.responses, null, 2));
   await browser.close();

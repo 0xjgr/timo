@@ -1,4 +1,5 @@
 import type { Page } from "playwright";
+import type { Trigger } from "../gate/gates.ts";
 import type { Action } from "./responses.ts";
 
 const KEY_NAMES: Record<string, string> = {
@@ -55,4 +56,22 @@ export async function runAction(page: Page, action: Action): Promise<void> {
 export function describeAction(action: Action): string {
   const { type, ...rest } = action;
   return `${type} ${JSON.stringify(rest)}`;
+}
+
+// note: a typed newline submits the form, so it becomes its own enter press the gate can see
+export function splitTyping(actions: Action[]): Action[] {
+  return actions.flatMap((action): Action[] => {
+    if (action.type !== "type" || !action.text.includes("\n")) return [action];
+    return action.text.split("\n").flatMap((line, index): Action[] => {
+      const enter: Action[] = index > 0 ? [{ type: "keypress", keys: ["ENTER"] }] : [];
+      return line === "" ? enter : [...enter, { type: "type", text: line }];
+    });
+  });
+}
+
+export function findTrigger(action: Action): Trigger | null {
+  if (action.type === "click" && (action.button === undefined || action.button === "left")) return { kind: "click", x: action.x, y: action.y };
+  if (action.type === "double_click") return { kind: "click", x: action.x, y: action.y };
+  if (action.type === "keypress" && action.keys.some((key) => ["ENTER", "RETURN"].includes(key.toUpperCase()))) return { kind: "enter" };
+  return null;
 }

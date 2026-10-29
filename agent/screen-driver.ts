@@ -1,6 +1,7 @@
 import { writeFile } from "node:fs/promises";
 import type { Page } from "playwright";
-import { describeAction, runAction } from "./actions.ts";
+import type { Blocked, Gates } from "../gate/gates.ts";
+import { describeAction, findTrigger, runAction, splitTyping } from "./actions.ts";
 import { createResponse, priceUsage, type ModelId, type OutputItem, type SafetyCheck } from "./responses.ts";
 
 export type ScreenOptions = {
@@ -13,6 +14,8 @@ export type ScreenOptions = {
   budgetUsd: number;
   isAck: boolean;
   runDir: string;
+  // note: absent in the unguarded eval condition
+  gates?: Gates;
 };
 
 // note: filled while the loop runs, so a crash still leaves what was spent and seen
@@ -20,8 +23,19 @@ export type Trail = {
   stopReason: string;
   spentUsd: number;
   safetyChecks: SafetyCheck[];
+  blocks: Blocked[];
   responses: unknown[];
 };
+
+// note: denied once, the agent may retry with other values; a second deny ends the errand
+const MAX_DENIES = 2;
+
+// note: comes from timo's own code, the only voice in the loop besides carmen's request
+function describeBlock(block: Blocked): string {
+  const what = block.via === "click" ? "this submit" : "a request the page sent on its own";
+  if (block.verdict.kind === "ask") return `Timo held ${what} for Carmen's family to approve: ${block.verdict.reason}. Nothing was sent.`;
+  return `Timo blocked ${what} (rule ${block.verdict.rule}): ${block.verdict.reason}. Nothing was sent.`;
+}
 
 type ComputerCall = Extract<OutputItem, { type: "computer_call" }>;
 
@@ -88,7 +102,8 @@ export async function driveScreen(options: ScreenOptions, trail: Trail): Promise
       return;
     }
 
-    const outputs = [];
+    const outputs: unknown[] = [];
+    const notices: string[] = [];
     for (const call of calls) {
       const checks = call.pending_safety_checks ?? [];
       for (const check of checks) console.log(`[meta] safety_check code=${check.code} message="${check.message}"`);
@@ -99,11 +114,22 @@ export async function driveScreen(options: ScreenOptions, trail: Trail): Promise
         trail.stopReason = "meta-safety-check";
         return;
       }
-      for (const action of call.actions) {
+      const blocks: Blocked[] = [];
+      for (const action of splitTyping(call.actions)) {
+        const trigger = findTrigger(action);
+        const held = trigger && options.gates ? await options.gates.checkTrigger(trigger) : null;
+        if (held) {
+          console.log(`[agent] step=${step} held ${describeAction(action)}`);
+          blocks.push(held);
+          break;
+        }
         console.log(`[agent] step=${step} ${describeAction(action)}`);
         await runAction(page, action);
       }
       await page.waitForLoadState("load");
+      blocks.push(...(await options.gates?.takeNetworkBlocks() ?? []));
+      trail.blocks.push(...blocks);
+      notices.push(...blocks.map(describeBlock));
       outputs.push({
         type: "computer_call_output",
         call_id: call.call_id,
@@ -111,6 +137,15 @@ export async function driveScreen(options: ScreenOptions, trail: Trail): Promise
         output: { type: "computer_screenshot", image_url: await shoot(page, runDir, step) },
       });
     }
+    if (trail.blocks.some((block) => block.verdict.kind === "ask")) {
+      trail.stopReason = "guardian-ask";
+      return;
+    }
+    if (trail.blocks.filter((block) => block.verdict.kind === "deny").length >= MAX_DENIES) {
+      trail.stopReason = `denied ${MAX_DENIES} times`;
+      return;
+    }
+    if (notices.length > 0) outputs.push({ role: "user", content: [{ type: "input_text", text: notices.join("\n") }] });
     // threat: runaway loop draining hackathon credits
     if (trail.spentUsd > options.budgetUsd) {
       trail.stopReason = `budget ${options.budgetUsd} usd`;
