@@ -16,7 +16,8 @@ export type BrandWatch = {
 };
 
 // threat: a cloned portal that carries the brand only in pixels, where no text rule can see it
-export function openBrandWatch(ledger: Payee[]): BrandWatch {
+// note: ownSites are the household's own bank and webmail pages; mail shown there is still checked by its sender
+export function openBrandWatch(ledger: Payee[], ownSites: string[] = []): BrandWatch {
   const inspected = new Set<string>();
   const impostors = new Map<string, Impostor>();
   const logos = new Map<string, LogoMatch>();
@@ -45,6 +46,7 @@ export function openBrandWatch(ledger: Payee[]): BrandWatch {
   const inspect = (source: Source, capture: () => Promise<Buffer>): void => {
     // note: a ledger payee's own domain may show its own logo
     if (ledger.some((payee) => payee.domains.includes(source.domain))) return;
+    if (source.via === "page" && ownSites.includes(source.domain)) return;
     const key = `${source.id} ${source.domain}`;
     if (inspected.has(key)) return;
     inspected.add(key);
