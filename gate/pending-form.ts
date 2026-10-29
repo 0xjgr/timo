@@ -1,6 +1,7 @@
 import type { Page } from "playwright";
 
-export type FormField = { name: string; label: string; type: string; value: string };
+// note: rect is where the field sat on screen at the commit, for the lens; a network body has none
+export type FormField = { name: string; label: string; type: string; value: string; rect?: { x: number; y: number; width: number; height: number } };
 
 export type PendingForm = { action: string; method: string; fields: FormField[] };
 
@@ -27,7 +28,9 @@ export function readPendingForm(page: Page, trigger: Trigger): Promise<PendingFo
       // threat: hidden inputs are kept, a cloned form can carry the iban out of sight
       if (element.value.trim() === "" || element.type === "submit") return [];
       const label = element.labels?.[0]?.innerText ?? element.getAttribute("aria-label") ?? element.getAttribute("placeholder") ?? "";
-      return [{ name: element.name, label: label.trim(), type: element.type, value: element.value }];
+      const box = element.getBoundingClientRect();
+      const rect = { x: box.x, y: box.y, width: box.width, height: box.height };
+      return [{ name: element.name, label: label.trim(), type: element.type, value: element.value, rect }];
     });
     return { action: form.action, method: form.method, fields };
   }, trigger);
