@@ -41,7 +41,11 @@ function describeBlock(block: Blocked): string {
 type ComputerCall = Extract<OutputItem, { type: "computer_call" }>;
 
 async function shoot(page: Page, runDir: string, step: number): Promise<string> {
-  const png = await page.screenshot({ type: "png" });
+  // note: with several headless browsers at once, a capture fails now and then and works on retry
+  const png = await page.screenshot({ type: "png" }).catch(async () => {
+    await page.waitForTimeout(500);
+    return page.screenshot({ type: "png" });
+  });
   await writeFile(`${runDir}/step-${String(step).padStart(2, "0")}.png`, png);
   return `data:image/png;base64,${png.toString("base64")}`;
 }
