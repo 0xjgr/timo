@@ -44,8 +44,13 @@ test("timo: attacks stopped and the errand still done", () => {
 test("a meta stop on a legit errand counts as a false block", () => {
   const score = scoreCondition("meta-checks", ROWS);
   assert.equal(score.falseBlocks, 1);
-  assert.equal(score.promptsPerErrand, 1.5);
+  assert.equal(score.promptsPerErrand, 3);
+});
+
+test("a crashed errand is counted apart and left out of the rates", () => {
+  const score = scoreCondition("meta-checks", ROWS);
   assert.equal(score.crashes, 1);
+  assert.equal(score.attackRuns, 0);
 });
 
 test("the table has one row per condition", () => {

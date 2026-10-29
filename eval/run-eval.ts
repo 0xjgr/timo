@@ -1,10 +1,10 @@
-import { appendFile, mkdir, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { parseArgs } from "node:util";
 import { CONDITIONS, runErrand, type Condition, type ErrandResult } from "../agent/errand.ts";
 import type { ModelId } from "../agent/responses.ts";
 import { readRulesCommit } from "../gate/rules-commit.ts";
 import { SCENARIOS, type Scenario } from "../world/scenario.ts";
-import { renderTable, scoreCondition } from "./score.ts";
+import { isHarnessFailure, renderTable, scoreCondition } from "./score.ts";
 
 const { values: args } = parseArgs({
   options: {
@@ -16,6 +16,8 @@ const { values: args } = parseArgs({
     "run-budget": { type: "string", default: "0.05" },
     "total-budget": { type: "string", default: "0.50" },
     steps: { type: "string", default: "25" },
+    // note: an earlier results dir; good rows are kept, missing and crashed jobs run again
+    resume: { type: "string" },
   },
 });
 
@@ -27,20 +29,26 @@ if (!scenarios.every((scenario) => SCENARIOS.includes(scenario))) throw new Erro
 const runBudget = Number(args["run-budget"]);
 const totalBudget = Number(args["total-budget"]);
 
+const stamp = args.resume ? args.resume.replace(/\/+$/, "").split("/").at(-1)! : new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+const outDir = `eval/results/${stamp}`;
+await mkdir(outDir, { recursive: true });
+const kept = args.resume ? await readRows(`${outDir}/rows.jsonl`) : [];
+const done = new Set(kept.filter((row) => !isHarnessFailure(row)).map((row) => row.runId));
+
 // note: repeats outermost, so a batch cut by the budget stays balanced across cells
 const jobs = Array.from({ length: Number(args.repeats) }, (_, repeat) =>
   conditions.flatMap((condition) => scenarios.map((scenario) => ({ condition, scenario, repeat }))),
-).flat();
+)
+  .flat()
+  .filter((job) => !done.has(`${job.condition}-${job.scenario}-${job.repeat}`));
 
-const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
-const outDir = `eval/results/${stamp}`;
-await mkdir(outDir, { recursive: true });
 const rulesCommit = readRulesCommit();
-console.error(`[eval] jobs=${jobs.length} model=${model} rules=${rulesCommit} worst-case usd=${(jobs.length * runBudget).toFixed(2)} cap=${totalBudget}`);
+console.error(`[eval] jobs=${jobs.length} kept=${done.size} model=${model} rules=${rulesCommit} worst-case usd=${(jobs.length * runBudget).toFixed(2)} cap=${totalBudget}`);
 
-const rows: ErrandResult[] = [];
+const rows: ErrandResult[] = kept;
 let spent = 0;
 let running = 0;
+let finished = 0;
 let next = 0;
 
 // threat: a batch that keeps going after the credits it was allowed. each running errand
@@ -69,16 +77,24 @@ async function work(): Promise<void> {
     running--;
     spent += result.spentUsd;
     rows.push(result);
+    finished++;
     await appendFile(`${outDir}/rows.jsonl`, `${JSON.stringify(result)}\n`);
-    console.error(`[eval] ${rows.length}/${jobs.length} ${job.condition} ${job.scenario} -> ${result.outcome} usd=${spent.toFixed(4)}`);
+    console.error(`[eval] ${finished}/${jobs.length} ${job.condition} ${job.scenario} -> ${result.outcome} usd=${spent.toFixed(4)}`);
     for (const wake of waiting.splice(0)) wake();
   }
 }
 
 await Promise.all(Array.from({ length: Number(args.concurrency) }, work));
-if (rows.length < jobs.length) console.error(`[eval] stopped at the budget cap after ${rows.length} jobs`);
+if (finished < jobs.length) console.error(`[eval] stopped at the budget cap after ${finished} jobs`);
 
 const table = renderTable(conditions.map((condition) => scoreCondition(condition, rows)));
-const header = `model ${model}, rules ${rulesCommit}, scenarios ${scenarios.join("/")}, ${rows.length} errands, $${spent.toFixed(4)}`;
+const scored = rows.filter((row) => !isHarnessFailure(row));
+const totalUsd = rows.reduce((sum, row) => sum + row.spentUsd, 0);
+const header = `model ${model}, rules ${rulesCommit}, scenarios ${scenarios.join("/")}, ${scored.length} scored errands (${rows.length - scored.length} harness failures kept in rows.jsonl, not scored), $${totalUsd.toFixed(4)}`;
 await writeFile(`${outDir}/table.md`, `${header}\n\n${table}\n`);
 console.error(`\n${header}\n\n${table}`);
+
+async function readRows(path: string): Promise<ErrandResult[]> {
+  const text = await readFile(path, "utf8");
+  return text.split("\n").filter((line) => line !== "").map((line) => JSON.parse(line) as ErrandResult);
+}
