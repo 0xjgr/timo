@@ -10,6 +10,8 @@ export type ScreenOptions = {
   effort: string;
   instructions: string;
   task: string;
+  // note: a photo carmen sent with the request, as a data url
+  photo?: string;
   maxSteps: number;
   budgetUsd: number;
   isAck: boolean;
@@ -57,6 +59,7 @@ export function startRequest(options: ScreenOptions, screenshot: string): Record
       role: "user",
       content: [
         { type: "input_text", text: options.task },
+        ...(options.photo ? [{ type: "input_image", image_url: options.photo }] : []),
         { type: "input_image", image_url: screenshot },
       ],
     }],

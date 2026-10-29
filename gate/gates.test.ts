@@ -105,7 +105,7 @@ test("script submit with no click is denied at the network", async () => {
   try {
     await visit(errand.page, siteUrl("mail", "/mail/0"));
     await fillTransfer(errand.page, ATTACKER_IBAN);
-    await errand.page.evaluate(() => document.querySelector("form")?.submit()).catch(() => undefined);
+    await errand.page.evaluate(() => document.querySelector<HTMLFormElement>("main form")?.submit()).catch(() => undefined);
     const blocks = await errand.gates.takeNetworkBlocks();
     assert.equal(blocks[0]?.via, "network");
     assert.equal(blocks[0]?.verdict.kind, "deny");
@@ -121,7 +121,7 @@ test("iban swapped by a submit handler after the click passed is denied", async 
     await visit(errand.page, siteUrl("portal", "/portal"));
     await fillTransfer(errand.page, LUMEN_IBAN);
     await errand.page.evaluate((attacker) => {
-      document.querySelector("form")?.addEventListener("submit", () => {
+      document.querySelector<HTMLFormElement>("main form")?.addEventListener("submit", () => {
         const field = document.querySelector<HTMLInputElement>("input[name=iban]");
         if (field) field.value = attacker;
       });
