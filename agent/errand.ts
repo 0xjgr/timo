@@ -5,7 +5,9 @@ import { readRulesCommit } from "../gate/rules-commit.ts";
 import { VerdictLog, verifyChain } from "../gate/verdict-log.ts";
 import { HOUSEHOLD_LEDGER } from "../ledger/household.ts";
 import { openBrandWatch, type BrandWatch } from "../sam/brand-watch.ts";
-import { watchPages } from "../provenance/page-reader.ts";
+import { openLens } from "../lens/lens.ts";
+import { SnapshotBook } from "../lens/snapshots.ts";
+import { watchPages, type SourceHook } from "../provenance/page-reader.ts";
 import { SourceLog } from "../provenance/source-log.ts";
 import { judgeTransfers, type Outcome } from "../world/judge.ts";
 import type { Scenario } from "../world/scenario.ts";
@@ -69,16 +71,28 @@ export async function runErrand(config: ErrandConfig): Promise<ErrandResult> {
     if (config.condition === "timo") {
       const sources = new SourceLog(request.words, HOUSEHOLD_LEDGER);
       brands = openBrandWatch(HOUSEHOLD_LEDGER);
+      const book = new SnapshotBook();
+      const watch = brands;
+      // note: one screenshot per load serves both the lens and the brand check
+      const onRecord: SourceHook = (page, source) => {
+        const shot = book.capture(page, source);
+        shot.catch((error: unknown) => console.log(`[lens] no snapshot id=${source.id} reason="${error instanceof Error ? error.message.split("\n")[0] : String(error)}"`));
+        watch.inspect(source, () => shot);
+      };
       const photo = readPhotoSource(request);
       if (photo && request.photo) {
+        const png = request.photo;
         sources.record(photo);
-        brands.inspectImage(request.photo, photo);
+        book.add({ source: photo, png, marks: request.qrCodes.map((code) => ({ text: `qr code: ${code.text}`, rect: toRect(code.region), mask: code.region.mask })) });
+        brands.inspect(photo, async () => png);
         console.log(`[source] photo domain=${photo.domain} id=${photo.id}`);
       }
-      watchPages(page, sources, SITES.mail, brands.inspect);
+      watchPages(page, sources, SITES.mail, onRecord);
       const opened = await VerdictLog.open(verdictsPath, readRulesCommit());
       if (!opened.ok) throw new Error(`fresh run dir has a broken verdict log: ${opened.error.reason}`);
-      gates = await openGates({ page, sources, ledger: HOUSEHOLD_LEDGER, verdicts: opened.value, mailHost: SITES.mail, brands });
+      gates = await openGates({ page, sources, ledger: HOUSEHOLD_LEDGER, verdicts: opened.value, mailHost: SITES.mail, brands, onRecord,
+        lens: openLens({ dir: `${config.runDir}/lens`, book, findLogo: brands.findLogo }),
+      });
     }
     await page.goto(world.startUrl);
     const options: ScreenOptions = {
@@ -124,6 +138,10 @@ export async function runErrand(config: ErrandConfig): Promise<ErrandResult> {
   await writeFile(`${config.runDir}/summary.json`, JSON.stringify({ ...result, safetyChecks: trail.safetyChecks, transfers: world.transfers }, null, 2));
   await writeFile(`${config.runDir}/responses.json`, JSON.stringify(trail.responses, null, 2));
   return result;
+}
+
+function toRect(region: { left: number; top: number; right: number; bottom: number }) {
+  return { x: region.left, y: region.top, width: region.right - region.left, height: region.bottom - region.top };
 }
 
 // note: under meta-checks a human would answer every confirmation; under timo only an ask reaches the guardian

@@ -1,4 +1,3 @@
-import type { Page } from "playwright";
 import type { Impostor } from "../gate/commit.ts";
 import type { Payee } from "../ledger/payee.ts";
 import type { Source } from "../provenance/source-log.ts";
@@ -8,11 +7,11 @@ import { SAM_USD_PER_IMAGE, segmentImage, type Region } from "./segment.ts";
 export type LogoMatch = { payeeId: string; region: Region; distance: number };
 
 export type BrandWatch = {
-  inspect: (page: Page, source: Source) => void;
-  inspectImage: (png: Buffer, source: Source) => void;
+  inspect: (source: Source, capture: () => Promise<Buffer>) => void;
   // note: the gates wait for inspections in flight, so a fast click cannot beat the check
   settle: () => Promise<void>;
   listImpostors: () => Impostor[];
+  findLogo: (sourceId: string) => LogoMatch | undefined;
   readSpentUsd: () => number;
 };
 
@@ -20,6 +19,7 @@ export type BrandWatch = {
 export function openBrandWatch(ledger: Payee[]): BrandWatch {
   const inspected = new Set<string>();
   const impostors = new Map<string, Impostor>();
+  const logos = new Map<string, LogoMatch>();
   const inFlight = new Set<Promise<void>>();
   let spentUsd = 0;
 
@@ -38,10 +38,11 @@ export function openBrandWatch(ledger: Payee[]): BrandWatch {
       return;
     }
     impostors.set(source.id, { sourceId: source.id, payeeId: match.payeeId, domain: source.domain });
+    logos.set(source.id, match);
     console.log(`[brand] impostor domain=${source.domain} logo=${match.payeeId} distance=${match.distance}`);
   };
 
-  const start = (capture: () => Promise<Buffer>, source: Source): void => {
+  const inspect = (source: Source, capture: () => Promise<Buffer>): void => {
     // note: a ledger payee's own domain may show its own logo
     if (ledger.some((payee) => payee.domains.includes(source.domain))) return;
     const key = `${source.id} ${source.domain}`;
@@ -54,12 +55,12 @@ export function openBrandWatch(ledger: Payee[]): BrandWatch {
   };
 
   return {
-    inspect: (page, source) => start(() => page.screenshot(), source),
-    inspectImage: (png, source) => start(async () => png, source),
+    inspect,
     settle: async () => {
       while (inFlight.size > 0) await Promise.all(inFlight);
     },
     listImpostors: () => [...impostors.values()],
+    findLogo: (sourceId) => logos.get(sourceId),
     readSpentUsd: () => spentUsd,
   };
 }

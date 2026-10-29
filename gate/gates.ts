@@ -5,7 +5,8 @@ import { judgeCommit } from "../policy/judge.ts";
 import type { Verdict } from "../policy/verdict.ts";
 import { registrableDomain } from "../provenance/domain.ts";
 import { extractIbans } from "../provenance/iban.ts";
-import { recordPage } from "../provenance/page-reader.ts";
+import type { Lens } from "../lens/lens.ts";
+import { recordPage, type SourceHook } from "../provenance/page-reader.ts";
 import type { SourceLog } from "../provenance/source-log.ts";
 import type { Trace } from "../provenance/trace.ts";
 import type { Commit } from "./commit.ts";
@@ -25,7 +26,16 @@ export type Gates = {
 
 const QUIET_MS = 250;
 
-type GateContext = { page: Page; sources: SourceLog; ledger: Payee[]; verdicts: VerdictLog; mailHost: string; brands?: BrandWatch };
+type GateContext = {
+  page: Page;
+  sources: SourceLog;
+  ledger: Payee[];
+  verdicts: VerdictLog;
+  mailHost: string;
+  brands?: BrandWatch;
+  onRecord?: SourceHook;
+  lens?: Lens;
+};
 
 export async function openGates(context: GateContext): Promise<Gates> {
   const { page, sources, mailHost } = context;
@@ -33,14 +43,15 @@ export async function openGates(context: GateContext): Promise<Gates> {
   const networkBlocks: Blocked[] = [];
   const inFlight = new Set<Promise<void>>();
 
-  const judge = async (commit: Commit): Promise<Verdict> => {
+  const judge = async (commit: Commit, fields: FormField[]): Promise<Verdict> => {
     if (context.brands) {
       await context.brands.settle();
       commit.impostors = context.brands.listImpostors();
     }
     const verdict = judgeCommit(commit, context.ledger);
-    await context.verdicts.append(commit, verdict, chooseFollowUp(verdict));
+    const entry = await context.verdicts.append(commit, verdict, chooseFollowUp(verdict));
     console.log(`[gate] ${describeVerdict(verdict)} via=${commit.via} target=${commit.targetDomain} ${describeTraces(commit.values)}`);
+    await context.lens?.record(entry, page, fields);
     return verdict;
   };
 
@@ -48,7 +59,7 @@ export async function openGates(context: GateContext): Promise<Gates> {
     const form = await readPendingForm(page, trigger);
     if (!form) return null;
     // note: re-read the page first, a script may have changed its text after the load event
-    await recordPage(page, sources, mailHost, context.brands?.inspect);
+    await recordPage(page, sources, mailHost, context.onRecord);
     const values = traceFields(form.fields, sources);
     if (values.length === 0) return null;
     const commit: Commit = {
@@ -61,7 +72,7 @@ export async function openGates(context: GateContext): Promise<Gates> {
       flaggedSourceIds: [],
       impostors: [],
     };
-    const verdict = await judge(commit);
+    const verdict = await judge(commit, form.fields);
     if (verdict.kind === "allow") {
       cleared.push(form.fields);
       return null;
@@ -96,7 +107,7 @@ export async function openGates(context: GateContext): Promise<Gates> {
       flaggedSourceIds: [],
       impostors: [],
     };
-    const verdict = await judge(commit);
+    const verdict = await judge(commit, fields);
     if (verdict.kind === "allow") return route.continue();
     networkBlocks.push({ via: "network", verdict });
     return route.abort("blockedbyclient");
