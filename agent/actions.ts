@@ -73,5 +73,6 @@ export function findTrigger(action: Action): Trigger | null {
   if (action.type === "click" && (action.button === undefined || action.button === "left")) return { kind: "click", x: action.x, y: action.y };
   if (action.type === "double_click") return { kind: "click", x: action.x, y: action.y };
   if (action.type === "keypress" && action.keys.some((key) => ["ENTER", "RETURN"].includes(key.toUpperCase()))) return { kind: "enter" };
+  if (action.type === "keypress" && action.keys.some((key) => key === " " || key.toUpperCase() === "SPACE")) return { kind: "space" };
   return null;
 }

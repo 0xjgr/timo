@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { chromium } from "playwright";
-import { openGates, type Gates } from "../gate/gates.ts";
+import { openGates, type Blocked, type Gates } from "../gate/gates.ts";
 import { readRulesCommit } from "../gate/rules-commit.ts";
 import { VerdictLog, verifyChain } from "../gate/verdict-log.ts";
 import { HOUSEHOLD_LEDGER } from "../ledger/household.ts";
@@ -9,8 +9,8 @@ import { openLens } from "../lens/lens.ts";
 import { SnapshotBook } from "../lens/snapshots.ts";
 import { watchPages, type SourceHook } from "../provenance/page-reader.ts";
 import { SourceLog } from "../provenance/source-log.ts";
-import { judgeTransfers, type Outcome } from "../world/judge.ts";
-import type { Scenario } from "../world/scenario.ts";
+import { judgeErrand, type Outcome } from "../world/judge.ts";
+import { GOALS, type Scenario } from "../world/scenario.ts";
 import { startWorld } from "../world/serve.ts";
 import { SITES } from "../world/sites.ts";
 import { describeRequest, prepareRequest, readPhotoSource } from "./carmen-request.ts";
@@ -51,6 +51,7 @@ export type ErrandResult = {
   humanPrompts: number;
   denies: number;
   asks: number;
+  approvals: number;
   isChainIntact: boolean | null;
 };
 
@@ -61,7 +62,7 @@ export async function runErrand(config: ErrandConfig): Promise<ErrandResult> {
   const browser = await chromium.launch({ args: [`--host-resolver-rules=${world.hostRules}`] });
   const page = await browser.newPage({ viewport: VIEWPORT });
   const verdictsPath = `${config.runDir}/verdicts.jsonl`;
-  const trail: Trail = { stopReason: "not-started", spentUsd: 0, safetyChecks: [], blocks: [], turns: 0, responses: [] };
+  const trail: Trail = { stopReason: "not-started", spentUsd: 0, safetyChecks: [], blocks: [], approvals: 0, turns: 0, responses: [] };
 
   let brands: BrandWatch | undefined;
   try {
@@ -70,7 +71,7 @@ export async function runErrand(config: ErrandConfig): Promise<ErrandResult> {
     trail.spentUsd += request.spentUsd;
     if (config.condition === "timo") {
       const sources = new SourceLog(request.words, HOUSEHOLD_LEDGER);
-      brands = openBrandWatch(HOUSEHOLD_LEDGER);
+      brands = openBrandWatch(HOUSEHOLD_LEDGER, [SITES.bank, SITES.mail]);
       const book = new SnapshotBook();
       const watch = brands;
       // note: one screenshot per load serves both the lens and the brand check
@@ -107,6 +108,7 @@ export async function runErrand(config: ErrandConfig): Promise<ErrandResult> {
       isAck: config.condition !== "meta-checks",
       runDir: config.runDir,
       gates,
+      askGuardian: (block) => answerAsGuardian(config.scenario, block),
     };
     await driveScreen(options, trail);
   } catch (error) {
@@ -124,7 +126,7 @@ export async function runErrand(config: ErrandConfig): Promise<ErrandResult> {
     condition: config.condition,
     scenario: config.scenario,
     model: config.model,
-    outcome: judgeTransfers(world.transfers),
+    outcome: judgeErrand(GOALS[config.scenario], world.transfers, world.messages),
     stopReason: trail.stopReason,
     spentUsd: trail.spentUsd,
     turns: trail.turns,
@@ -132,12 +134,21 @@ export async function runErrand(config: ErrandConfig): Promise<ErrandResult> {
     humanPrompts: countHumanPrompts(config.condition, trail),
     denies: trail.blocks.filter((block) => block.verdict.kind === "deny").length,
     asks: trail.blocks.filter((block) => block.verdict.kind === "ask").length,
+    approvals: trail.approvals,
     isChainIntact: config.condition === "timo" ? verifyChain(await readFile(verdictsPath, "utf8").catch(() => "")).ok : null,
   };
   console.log(`[run] ${result.scenario} condition=${result.condition} outcome=${result.outcome} prompts=${result.humanPrompts} denies=${result.denies} stop="${result.stopReason}" usd=${result.spentUsd.toFixed(4)} turns=${result.turns}`);
-  await writeFile(`${config.runDir}/summary.json`, JSON.stringify({ ...result, safetyChecks: trail.safetyChecks, transfers: world.transfers }, null, 2));
+  await writeFile(`${config.runDir}/summary.json`, JSON.stringify({ ...result, safetyChecks: trail.safetyChecks, transfers: world.transfers, messages: world.messages }, null, 2));
   await writeFile(`${config.runDir}/responses.json`, JSON.stringify(trail.responses, null, 2));
   return result;
+}
+
+// note: an ideal guardian who knows the household: yes on a legit errand, no on an attack.
+// a real one can be fooled too, so the eval reports how often they were asked, not only the outcome
+function answerAsGuardian(scenario: Scenario, block: Blocked): boolean {
+  const isApproved = GOALS[scenario].kind === "legit";
+  console.log(`[guardian] ${isApproved ? "approve" : "decline"} rule=${block.verdict.rule}`);
+  return isApproved;
 }
 
 function toRect(region: { left: number; top: number; right: number; bottom: number }) {

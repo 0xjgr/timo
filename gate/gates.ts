@@ -14,7 +14,7 @@ import { readPendingForm, type FormField } from "./pending-form.ts";
 import { traceFields } from "./sensitive-fields.ts";
 import type { FollowUp, VerdictLog } from "./verdict-log.ts";
 
-export type Trigger = { kind: "click"; x: number; y: number } | { kind: "enter" };
+export type Trigger = { kind: "click"; x: number; y: number } | { kind: "enter" } | { kind: "space" };
 
 export type Blocked = { via: Commit["via"]; verdict: Exclude<Verdict, { kind: "allow" }> };
 
@@ -22,6 +22,8 @@ export type Gates = {
   checkTrigger: (trigger: Trigger) => Promise<Blocked | null>;
   // note: network blocks happen outside the agent's turn, so the driver waits for them after each action
   takeNetworkBlocks: () => Promise<Blocked[]>;
+  // note: the guardian said yes to the last held click, so that exact submit may leave once
+  approveHeld: () => void;
 };
 
 const QUIET_MS = 250;
@@ -40,6 +42,7 @@ type GateContext = {
 export async function openGates(context: GateContext): Promise<Gates> {
   const { page, sources, mailHost } = context;
   const cleared: FormField[][] = [];
+  let held: FormField[] | undefined;
   const networkBlocks: Blocked[] = [];
   const inFlight = new Set<Promise<void>>();
 
@@ -51,7 +54,10 @@ export async function openGates(context: GateContext): Promise<Gates> {
     const verdict = judgeCommit(commit, context.ledger);
     const entry = await context.verdicts.append(commit, verdict, chooseFollowUp(verdict));
     console.log(`[gate] ${describeVerdict(verdict)} via=${commit.via} target=${commit.targetDomain} ${describeTraces(commit.values)}`);
-    await context.lens?.record(entry, page, fields);
+    // note: the lens is evidence for people, so a failed capture is logged and the verdict stands
+    await context.lens?.record(entry, page, fields).catch((error: unknown) => {
+      console.log(`[lens] failed seq=${entry.seq} reason="${error instanceof Error ? error.message.split("\n")[0] : String(error)}"`);
+    });
     return verdict;
   };
 
@@ -77,6 +83,7 @@ export async function openGates(context: GateContext): Promise<Gates> {
       cleared.push(form.fields);
       return null;
     }
+    held = verdict.kind === "ask" ? form.fields : undefined;
     return { via: "click", verdict };
   };
 
@@ -122,7 +129,13 @@ export async function openGates(context: GateContext): Promise<Gates> {
     return networkBlocks.splice(0);
   };
 
-  return { checkTrigger, takeNetworkBlocks };
+  // todo: the guardian's answer goes in the verdict log once the guardian page writes it
+  const approveHeld = () => {
+    if (held) cleared.push(held);
+    held = undefined;
+  };
+
+  return { checkTrigger, takeNetworkBlocks, approveHeld };
 }
 
 function readBody(request: Request): FormField[] {

@@ -5,16 +5,21 @@ export type FormField = { name: string; label: string; type: string; value: stri
 
 export type PendingForm = { action: string; method: string; fields: FormField[] };
 
-type Trigger = { kind: "click"; x: number; y: number } | { kind: "enter" };
+type Trigger = { kind: "click"; x: number; y: number } | { kind: "enter" } | { kind: "space" };
 
 // note: reads the form as it is right now, including values the page pre-filled or a script changed
 export function readPendingForm(page: Page, trigger: Trigger): Promise<PendingForm | null> {
   return page.evaluate((trigger) => {
     const findForm = (): HTMLFormElement | null => {
+      const active = document.activeElement;
+      // threat: tab to the send button and press enter or space, a submit with no click on it
+      const focusedSubmit = active instanceof HTMLButtonElement && active.type === "submit" ? active.form
+        : active instanceof HTMLInputElement && ["submit", "image"].includes(active.type) ? active.form
+        : null;
+      if (trigger.kind === "space") return focusedSubmit;
       if (trigger.kind === "enter") {
-        const active = document.activeElement;
-        const isTextEntry = active instanceof HTMLInputElement && !["button", "checkbox", "radio", "reset"].includes(active.type);
-        return isTextEntry ? active.form : null;
+        const isTextEntry = active instanceof HTMLInputElement && !["button", "checkbox", "radio", "reset", "submit", "image"].includes(active.type);
+        return focusedSubmit ?? (isTextEntry ? active.form : null);
       }
       const hit = document.elementFromPoint(trigger.x, trigger.y)?.closest("button, input");
       if (hit instanceof HTMLButtonElement && hit.type === "submit") return hit.form;
