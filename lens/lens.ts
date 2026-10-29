@@ -22,11 +22,11 @@ export function openLens(context: LensContext): Lens {
       if (entry.verdict.kind === "allow") return;
       await mkdir(context.dir, { recursive: true });
       const stem = `verdict-${entry.seq}`;
-      const commitPng = await page.screenshot();
-      await writeFile(`${context.dir}/${stem}-commit.png`, commitPng);
+      const commitPng = await captureCommit(entry, page);
+      if (commitPng) await writeFile(`${context.dir}/${stem}-commit.png`, commitPng);
       const lensPage: LensPage = {
         entry,
-        commitImage: { file: `${stem}-commit.png`, ...readPngSize(commitPng) },
+        commitImage: commitPng && { file: `${stem}-commit.png`, ...readPngSize(commitPng) },
         fields: entry.commit.values.map((trace) => ({ trace, rect: findFieldRect(trace, fields), isVouched: isVouched(trace) })),
         sources: [],
       };
@@ -50,6 +50,15 @@ export function openLens(context: LensContext): Lens {
       console.log(`[lens] wrote ${context.dir}/${stem}.html sources=${lensPage.sources.length}`);
     },
   };
+}
+
+// note: a network verdict holds the very request the page is navigating on, so a screenshot would wait on itself
+async function captureCommit(entry: VerdictEntry, page: Page): Promise<Buffer | undefined> {
+  if (entry.commit.via === "network") return undefined;
+  return page.screenshot({ timeout: 5000 }).catch((error: unknown) => {
+    console.log(`[lens] no commit shot seq=${entry.seq} reason="${error instanceof Error ? error.message.split("\n")[0] : String(error)}"`);
+    return undefined;
+  });
 }
 
 function isVouched(trace: Trace): boolean {

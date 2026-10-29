@@ -8,7 +8,7 @@ type Image = { file: string; width: number; height: number };
 
 export type LensPage = {
   entry: VerdictEntry;
-  commitImage: Image;
+  commitImage?: Image;
   fields: { trace: Trace; rect?: Rect; isVouched: boolean }[];
   sources: { source: Source; image: Image; marks: Mark[] }[];
 };
@@ -54,10 +54,10 @@ export function renderLens(page: LensPage): string {
 <table><tr><th>Value</th><th></th><th>Where it came from</th></tr>
 ${page.fields.map(({ trace, isVouched }) => `<tr><td>${trace.kind}</td><td>${escapeHtml(trace.value)}</td><td class="${isVouched ? "trusted" : "foreign"}">${describeOrigins(trace.origins)}</td></tr>`).join("\n")}
 </table>
-<h2>At the moment of the click</h2>
+${page.commitImage ? `<h2>At the moment of the click</h2>
 <figure><figcaption>${escapeHtml(entry.commit.pageUrl)}</figcaption>
 ${renderShot(page.commitImage, page.fields.flatMap(({ trace, rect, isVouched }) => (rect ? [{ rect, label: `${trace.kind}: ${shortOrigins(trace.origins)}`, isTrusted: isVouched }] : [])))}
-</figure>
+</figure>` : `<p class="meta">Held at the network on ${escapeHtml(entry.commit.pageUrl)}, while the page was sending it, so there is no screenshot of the form.</p>`}
 <h2>Where the untrusted values were read</h2>
 <div class="sources">
 ${page.sources.map(({ source, image, marks }) => `<figure><figcaption>${source.via} from ${escapeHtml(source.domain)} · ${escapeHtml(source.id)}</figcaption>
