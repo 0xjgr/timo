@@ -1,4 +1,6 @@
 import { parseArgs } from "node:util";
+import { HOUSEHOLD_LEDGER } from "../ledger/household.ts";
+import { writeCards } from "../teach/write-cards.ts";
 import { SCENARIOS, type Scenario } from "../world/scenario.ts";
 import { CONDITIONS, runErrand, type Condition } from "./errand.ts";
 import type { ModelId } from "./responses.ts";
@@ -21,6 +23,7 @@ if (!CONDITIONS.includes(condition)) throw new Error(`unknown condition ${condit
 
 const model = args.model as ModelId;
 const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+const runDir = `runs/${stamp}-${model}-${scenario}-${condition}`;
 const result = await runErrand({
   condition,
   scenario,
@@ -28,6 +31,11 @@ const result = await runErrand({
   effort: args.effort,
   maxSteps: Number(args.steps),
   budgetUsd: Number(args.budget),
-  runDir: `runs/${stamp}-${model}-${scenario}-${condition}`,
+  runDir,
 });
 if (result.stopReason.startsWith("crash")) process.exitCode = 1;
+// note: cards are written after the errand, so the gate never waits on a model
+if (condition === "timo") {
+  const written = await writeCards(runDir, HOUSEHOLD_LEDGER);
+  if (!written.ok) console.log(`[teach] skipped reason="${written.error}"`);
+}

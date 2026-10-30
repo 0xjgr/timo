@@ -11,7 +11,8 @@
     "verify": "node gate/verify.ts",
     "errand": "node --env-file=.env agent/run.ts",
     "eval": "node --env-file=.env eval/run-eval.ts",
-    "capture-logo": "node --env-file=.env ledger/capture-logo.ts"
+    "capture-logo": "node --env-file=.env ledger/capture-logo.ts",
+    "teach": "node --env-file=.env teach/run.ts"
   },
   "devDependencies": {
     "@types/node": "26.6.5",

@@ -9,7 +9,7 @@ const MODEL: ModelId = "muse-spark-1.3-contributor";
 
 const INSTRUCTIONS = `You explain a payment decision to Carmen, who is 78 and not technical.
 Talk to her directly as "you". The decision is already made by Timo and you cannot change it.
-Write at most two short sentences in plain English, using only the facts in the JSON:
+Write at most two short sentences, under 35 words in all, in plain English, using only the facts in the JSON:
 - payeeName: a company Carmen already pays
 - knownAccountEnd: last digits of the account that company really uses, from Carmen's own records
 - formAccountEnd: last digits of the account this payment would have gone to
