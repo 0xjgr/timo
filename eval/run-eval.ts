@@ -1,4 +1,4 @@
-import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { parseArgs } from "node:util";
 import { CONDITIONS, runErrand, type Condition, type ErrandResult } from "../agent/errand.ts";
 import type { ModelId } from "../agent/responses.ts";
@@ -66,13 +66,16 @@ async function work(): Promise<void> {
     }
     const job = jobs[next++]!;
     running++;
+    const runDir = `runs/eval-${stamp}/${job.condition}-${job.scenario}-${job.repeat}`;
+    // note: a rerun after a harness failure starts clean, so its verdict log and lens hold one attempt
+    await rm(runDir, { recursive: true, force: true });
     const result = await runErrand({
       ...job,
       model,
       effort: "low",
       maxSteps: Number(args.steps),
       budgetUsd: runBudget,
-      runDir: `runs/eval-${stamp}/${job.condition}-${job.scenario}-${job.repeat}`,
+      runDir,
     });
     running--;
     spent += result.spentUsd;
