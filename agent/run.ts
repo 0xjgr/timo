@@ -1,4 +1,5 @@
 import { parseArgs } from "node:util";
+import { writeDay } from "../guardian/write-day.ts";
 import { HOUSEHOLD_LEDGER } from "../ledger/household.ts";
 import { writeCards } from "../teach/write-cards.ts";
 import { SCENARIOS, type Scenario } from "../world/scenario.ts";
@@ -38,4 +39,5 @@ if (result.stopReason.startsWith("crash")) process.exitCode = 1;
 if (condition === "timo") {
   const written = await writeCards(runDir, HOUSEHOLD_LEDGER);
   if (!written.ok) console.log(`[teach] skipped reason="${written.error}"`);
+  await writeDay(runDir, HOUSEHOLD_LEDGER, `Carmen's errand · ${scenario} · ${stamp}`);
 }
