@@ -57,7 +57,7 @@ async function postJson(path: string, body: unknown): Promise<{ ok: true; value:
   }
 }
 
-const REQUEST_TIMEOUT_MS = 120_000;
+const REQUEST_TIMEOUT_MS = 45_000;
 
 // threat: a request the api never answers held all four eval workers for 18 hours
 async function sendOnce(path: string, body: unknown): Promise<{ ok: true; status: number; text: string } | { ok: false; error: string }> {
