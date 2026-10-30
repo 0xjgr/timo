@@ -47,17 +47,31 @@ function readKey(): string {
 
 async function postJson(path: string, body: unknown): Promise<{ ok: true; value: any } | { ok: false; error: string }> {
   for (let attempt = 1; ; attempt++) {
+    const sent = await sendOnce(path, body);
+    if (sent.ok && sent.status < 400) return { ok: true, value: JSON.parse(sent.text) };
+    const error = sent.ok ? `http ${sent.status}: ${sent.text.slice(0, 600)}` : sent.error;
+    // note: the api returns transient 503 "persistence service error" mid-run, and now and then never answers
+    if ((sent.ok && sent.status < 500) || attempt === 3) return { ok: false, error };
+    console.log(`[api] retry reason="${error.slice(0, 80)}" attempt=${attempt}`);
+    await new Promise((resolve) => setTimeout(resolve, 2000 * attempt));
+  }
+}
+
+const REQUEST_TIMEOUT_MS = 120_000;
+
+// threat: a request the api never answers held all four eval workers for 18 hours
+async function sendOnce(path: string, body: unknown): Promise<{ ok: true; status: number; text: string } | { ok: false; error: string }> {
+  try {
     const res = await fetch(`${API}${path}`, {
       method: "POST",
       headers: { authorization: `Bearer ${readKey()}`, "content-type": "application/json" },
       body: JSON.stringify(body),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
-    const text = await res.text();
-    if (res.ok) return { ok: true, value: JSON.parse(text) };
-    // note: the api returns transient 503 "persistence service error" mid-run
-    if (res.status < 500 || attempt === 3) return { ok: false, error: `http ${res.status}: ${text.slice(0, 600)}` };
-    console.log(`[api] retry status=${res.status} attempt=${attempt}`);
-    await new Promise((resolve) => setTimeout(resolve, 2000 * attempt));
+    return { ok: true, status: res.status, text: await res.text() };
+  } catch (error) {
+    // note: fetch throws for timeouts and dropped connections, both expected on a long batch
+    return { ok: false, error: `network ${error instanceof Error ? error.name : "error"}: ${error instanceof Error ? error.message : String(error)}` };
   }
 }
 
