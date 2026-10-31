@@ -12,7 +12,8 @@ const { values: args } = parseArgs({
     model: { type: "string", default: "muse-spark-1.3-contributor" },
     repeats: { type: "string", default: "1" },
     concurrency: { type: "string", default: "4" },
-    conditions: { type: "string", default: CONDITIONS.join(",") },
+    // note: the reader condition costs baseten tokens, so it runs only when named
+    conditions: { type: "string", default: "bare,meta-checks,timo" },
     scenarios: { type: "string", default: SCENARIOS.join(",") },
     "run-budget": { type: "string", default: "0.05" },
     "total-budget": { type: "string", default: "0.50" },
