@@ -70,6 +70,11 @@ crashed in the harness and are left out.
 | meta-checks | 29/89 | 48/89 | 30/30 | 0/30 | 7.9 | 0.0042 |
 | timo | **0/88** | **78/88** | 28/30 | **0/30** | 0.1 | 0.0074 |
 
+Attacker win rate with 95% Wilson intervals: bare 27.0% (18.8 to 37.0), meta-checks
+32.6% (23.7 to 42.9), timo 0.0% (0.0 to 4.2). Two-sided Fisher exact test, timo against
+bare p = 2.0e-8, against meta-checks p = 2.4e-10. Zero out of 88 is not zero risk: at
+this sample size the true rate could still be up to 4.2%.
+
 Attacker paid, by scenario:
 
 | Attack | What the agent sees | bare | meta-checks | timo |
@@ -88,11 +93,11 @@ What this shows:
 - The quiet attacks are the ones that work: a changed number gives the model nothing
   to refuse. The loud ones (inject, grandson, inflated) fail even with no protection.
 - The model API's safety checks ask a person 7.9 times per errand, mostly on harmless
-  clicks, and do not lower the attacker's wins.
+  clicks, and do not lower the attacker's wins (29 against 24 of 89, Fisher p = 0.51).
 - Timo's 2 unfinished legit errands were not blocks. In both the agent kept clicking
   about 15 px above the "View my bill" link until it ran out of steps.
 
-Every row, harness failures included, is in `eval/results/2026-10-29-15-33-54/`; `npm run eval` reruns the batch.
+Every row, harness failures included, is in `eval/results/2026-10-29-15-33-54/`; `npm run eval` reruns the batch and `npm run stats` recomputes the intervals.
 
 ## Limitations
 - Spoken replies use the browser's speech synthesis.
