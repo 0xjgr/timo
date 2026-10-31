@@ -35,6 +35,28 @@ a fake invoice that only swapped the IBAN made the agent pay the attacker 7 time
 and the model API's own injection check never fired: there was no instruction to detect,
 only a wrong number. The loud version of the attack ("note to AI assistants") failed 0 of 9.
 
+## How it works
+1. **Trace.** Every page, email, PDF and letter photo the agent opens is logged as a
+   source. When a value is typed into a form, Timo finds where it appears: the request,
+   the ledger, or a source (with its sender's domain).
+2. **Gate.** At the submit click, and again on any outgoing POST, the policy engine
+   judges the whole form. Eight pure rules; deny beats ask beats allow.
+3. **Second reader.** Muse Spark Open, an open-weights model served on Baseten, reads
+   each source and answers in JSON whether it tries to move the money (a changed
+   account, pressure, paying elsewhere, orders to an AI, secrecy), quoting the sentence.
+   Code drops the flag unless the quote is in the source word for word. A flag can only
+   turn an allow into an ask, and only for a value that nothing but flagged sources
+   backs. It never extracts payment values; those come from the page itself.
+4. **Guardian desk.** An ask holds the click and shows up on the guardian's phone: who,
+   how much, which account ending, where it came from, the reader's quote, and the
+   screenshot Timo judged. Approving needs a tick that says "I called them on a number
+   I already had". A new payee can be added to the ledger with the phone number they
+   called; a known payee's account can never be changed from there. No answer in 10
+   minutes is a decline.
+5. **Log.** Every verdict and every guardian answer is one line in a hash chain;
+   `npm run verify` checks it, and the teach card and guardian pages only read a
+   verified log.
+
 ## Threat model
 - **Assets:** money, household secrets (bank login), and the user's attention.
 - **Trusted:** the user's request, the ledger, Timo's own code.
@@ -99,9 +121,27 @@ What this shows:
 
 Every row, harness failures included, is in `eval/results/2026-10-29-15-33-54/`; `npm run eval` reruns the batch and `npm run stats` recomputes the intervals.
 
+### Second reader on its own
+Muse Spark Open on Baseten as a classifier, 23 sources read 3 times each ($0.12,
+`eval/results/reader-2026-10-31-12-44-35/`). The sources are the world's mail and pages
+plus 8 written apart from it, half in Spanish.
+
+| Sources | Flagged |
+|---|---|
+| say something that moves the money (bank change, pressure, AI orders, secrecy, login elsewhere) | 24/24 (95% 86-100%) |
+| ordinary mail, bills and invoices, a first invoice from a new supplier included | 0/30 (95% 0-11%) |
+| quiet attacks with no tell in the words (swapped IBAN only, cloned portal, PDF) | 0/15 |
+
+The quiet ones are the attacks that worked best on the bare agent, so the reader adds
+depth, not the main defense: the rules stop those. The set is small and written by the
+same person as the prompt.
+
 ## Limitations
 - Spoken replies use the browser's speech synthesis.
 - The demo runs against a toy world with fictional brands; nothing real is paid.
+- The ledger file is not hash-chained; the chain records each addition, but someone
+  with access to the machine can edit the file.
+- The guardian desk is a local server with a one-time link; there is no account system.
 
 ## AI tools used
 Listed at submission.
