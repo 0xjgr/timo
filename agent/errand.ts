@@ -2,7 +2,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { chromium } from "playwright";
 import { openGates, type Blocked, type Gates } from "../gate/gates.ts";
 import { readRulesCommit } from "../gate/rules-commit.ts";
-import { VerdictLog, verifyChain } from "../gate/verdict-log.ts";
+import { VerdictLog, verifyChain, type GuardianAnswer } from "../gate/verdict-log.ts";
 import { HOUSEHOLD_LEDGER } from "../ledger/household.ts";
 import { openBrandWatch, type BrandWatch } from "../sam/brand-watch.ts";
 import { openLens } from "../lens/lens.ts";
@@ -44,6 +44,8 @@ export type ErrandConfig = {
   maxSteps: number;
   budgetUsd: number;
   runDir: string;
+  // note: the live desk; without it the eval's stand-in guardian answers
+  askGuardian?: (block: Blocked) => Promise<GuardianAnswer>;
 };
 
 export type ErrandResult = {
@@ -123,7 +125,7 @@ export async function runErrand(config: ErrandConfig): Promise<ErrandResult> {
       isAck: config.condition !== "meta-checks",
       runDir: config.runDir,
       gates,
-      askGuardian: (block) => answerAsGuardian(config.scenario, block),
+      askGuardian: config.askGuardian ?? (() => answerAsGuardian(config.scenario)),
     };
     await driveScreen(options, trail);
   } catch (error) {
@@ -160,10 +162,8 @@ export async function runErrand(config: ErrandConfig): Promise<ErrandResult> {
 
 // note: an ideal guardian who knows the household: yes on a legit errand, no on an attack.
 // a real one can be fooled too, so the eval reports how often they were asked, not only the outcome
-function answerAsGuardian(scenario: Scenario, block: Blocked): boolean {
-  const isApproved = GOALS[scenario].kind === "legit";
-  console.log(`[guardian] ${isApproved ? "approve" : "decline"} rule=${block.verdict.rule}`);
-  return isApproved;
+async function answerAsGuardian(scenario: Scenario): Promise<GuardianAnswer> {
+  return { isApproved: GOALS[scenario].kind === "legit", by: "stand-in" };
 }
 
 function toRect(region: { left: number; top: number; right: number; bottom: number }) {
