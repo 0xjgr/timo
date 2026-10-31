@@ -37,7 +37,7 @@ function submitTransfer(log: SourceLog, iban: string, amount = "84,20"): Commit 
       log.traceValue("iban", iban),
       log.traceValue("amount", amount),
     ],
-    flaggedSourceIds: [],
+    flags: [],
     impostors: [],
   };
 }

@@ -34,7 +34,7 @@ function transfer(values: Trace[], overrides: Partial<Commit> = {}): Commit {
     pageDomain: "bancosol.es",
     targetDomain: "bancosol.es",
     values,
-    flaggedSourceIds: [],
+    flags: [],
     impostors: [],
     ...overrides,
   };
@@ -129,8 +129,15 @@ export const RULE_CASES: RuleCase[] = [
   },
   {
     name: "second reader flags the portal page",
-    commit: transfer(LEGIT_VALUES, { flaggedSourceIds: ["portal"] }),
+    commit: transfer(LEGIT_VALUES, { flags: [{ sourceId: "portal", reason: "payment-change", quote: "we now collect payments through a new bank" }] }),
     expected: "ask",
     rule: "reader-escalation",
+  },
+  {
+    name: "the real bill amount also appears in a flagged mail from the real sender",
+    commit: transfer([LEGIT_VALUES[0]!, amount(INVOICE_AMOUNT, fromRealSender, fromPortal), LEGIT_VALUES[2]!], {
+      flags: [{ sourceId: "hijacked-invoice", reason: "payment-change", quote: "Lumen Energy now collects payments through a new bank" }],
+    }),
+    expected: "allow",
   },
 ];

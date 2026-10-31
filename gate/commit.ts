@@ -1,4 +1,5 @@
 import type { Trace } from "../provenance/trace.ts";
+import type { ReaderFlag } from "../reader/read-source.ts";
 
 export type Impostor = { sourceId: string; payeeId: string; domain: string };
 
@@ -12,5 +13,6 @@ export type Commit = {
   values: Trace[];
   // note: every source the brand check caught showing a ledger logo off the payee's domains
   impostors: Impostor[];
-  flaggedSourceIds: string[];
+  // note: second reader flags on the sources this commit's values came from
+  flags: ReaderFlag[];
 };

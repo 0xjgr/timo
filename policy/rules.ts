@@ -76,11 +76,14 @@ export const RULES: Record<RuleId, Rule> = {
   },
 
   "reader-escalation": (commit) => {
-    const flagged = commit.values
-      .flatMap((trace) => trace.origins)
-      .find((origin) => origin.kind === "foreign" && commit.flaggedSourceIds.includes(origin.sourceId));
-    if (!flagged) return null;
-    return ask("reader-escalation", `the second reader flagged ${describeOrigins([flagged])}`);
+    // threat: a scam the rules have no shape for, caught only by what the source says.
+    // note: only a value that nothing but flagged sources backs; the real bill amount repeated in a flagged mail stays allowed
+    const findFlag = (origin: Origin) => (origin.kind === "foreign" ? commit.flags.find((flag) => flag.sourceId === origin.sourceId) : undefined);
+    const carried = commit.values.find((trace) => trace.origins.length > 0 && trace.origins.every((origin) => findFlag(origin)));
+    if (!carried) return null;
+    const origin = carried.origins[0]!;
+    const flag = findFlag(origin)!;
+    return ask("reader-escalation", `${carried.kind} ${carried.value} comes only from ${describeOrigins([origin])}, which the second reader flagged for ${flag.reason}: "${flag.quote}"`);
   },
 };
 

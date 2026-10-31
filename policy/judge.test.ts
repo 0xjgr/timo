@@ -16,7 +16,7 @@ for (const ruleCase of RULE_CASES) {
 
 test("a flagged source never softens a deny", () => {
   const swap = RULE_CASES.find((ruleCase) => ruleCase.rule === "payee-drift")!;
-  const flagged = { ...swap.commit, flaggedSourceIds: ["fake-invoice"] };
+  const flagged = { ...swap.commit, flags: [{ sourceId: "fake-invoice", reason: "payment-change" as const, quote: "please pay to the account below" }] };
   assert.equal(judgeCommit(flagged, LEDGER).kind, "deny");
 });
 

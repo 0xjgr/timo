@@ -6,6 +6,7 @@ import type { Verdict } from "../policy/verdict.ts";
 import { registrableDomain } from "../provenance/domain.ts";
 import { extractIbans } from "../provenance/iban.ts";
 import type { Lens } from "../lens/lens.ts";
+import type { ReaderWatch } from "../reader/reader-watch.ts";
 import { recordPage, type SourceHook } from "../provenance/page-reader.ts";
 import type { SourceLog } from "../provenance/source-log.ts";
 import type { Trace } from "../provenance/trace.ts";
@@ -35,6 +36,7 @@ type GateContext = {
   verdicts: VerdictLog;
   mailHost: string;
   brands?: BrandWatch;
+  reader?: ReaderWatch;
   onRecord?: SourceHook;
   lens?: Lens;
 };
@@ -50,6 +52,11 @@ export async function openGates(context: GateContext): Promise<Gates> {
     if (context.brands) {
       await context.brands.settle();
       commit.impostors = context.brands.listImpostors();
+    }
+    if (context.reader) {
+      await context.reader.settle();
+      const sourceIds = new Set(commit.values.flatMap((trace) => trace.origins).flatMap((origin) => (origin.kind === "foreign" ? [origin.sourceId] : [])));
+      commit.flags = context.reader.listFlags().filter((flag) => sourceIds.has(flag.sourceId));
     }
     const verdict = judgeCommit(commit, context.ledger);
     const entry = await context.verdicts.append(commit, verdict, chooseFollowUp(verdict));
@@ -75,7 +82,7 @@ export async function openGates(context: GateContext): Promise<Gates> {
       pageDomain: registrableDomain(page.url()),
       targetDomain: registrableDomain(form.action),
       values,
-      flaggedSourceIds: [],
+      flags: [],
       impostors: [],
     };
     const verdict = await judge(commit, form.fields);
@@ -111,7 +118,7 @@ export async function openGates(context: GateContext): Promise<Gates> {
       pageDomain: registrableDomain(request.frame().url()),
       targetDomain: registrableDomain(request.url()),
       values,
-      flaggedSourceIds: [],
+      flags: [],
       impostors: [],
     };
     const verdict = await judge(commit, fields);
