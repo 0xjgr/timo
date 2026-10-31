@@ -13,7 +13,8 @@
     "eval": "node --env-file=.env eval/run-eval.ts",
     "capture-logo": "node --env-file=.env ledger/capture-logo.ts",
     "teach": "node --env-file=.env teach/run.ts",
-    "guardian": "node guardian/run.ts"
+    "guardian": "node guardian/run.ts",
+    "stats": "node eval/stats.ts"
   },
   "devDependencies": {
     "@types/node": "26.6.5",
