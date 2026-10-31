@@ -22,12 +22,16 @@ h1 { font-size: 18px; margin: 0; } h2 { font-size: 12px; color: var(--dim); text
 .buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 button { font: inherit; font-weight: bold; padding: 14px; border: 1px solid var(--line); background: var(--bg); color: var(--text); cursor: pointer; }
 button.approve { border-color: var(--ok); color: var(--ok); } button.decline { border-color: var(--deny); color: var(--deny); }
+button.add { grid-column: 1 / -1; border-color: var(--ok); }
+.phone { width: 100%; font: inherit; padding: 10px; margin: 0 0 10px; border: 1px solid var(--line); background: var(--bg); color: var(--text); }
+.error { color: var(--deny); font-size: 14px; margin: 8px 0 0; }
 button:disabled { opacity: .35; cursor: not-allowed; }
 .timer { color: var(--dim); font-size: 13px; margin-top: 10px; }
 a { color: inherit; }
 .empty { color: var(--dim); border: 1px dashed var(--line); padding: 16px; margin-top: 16px; }
 ol { list-style: none; padding: 0; margin: 0; font-size: 13px; }
 ol li.empty { display: block; margin: 0; }
+#ledger li { grid-template-columns: 3.4em 9.5em 1fr; }
 ol li { display: grid; grid-template-columns: 2.2em 4.6em 1fr; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--line); }
 .allow { color: var(--ok); } .deny { color: var(--deny); } .askk { color: var(--ask); }
 .overlay { position: fixed; inset: 0; background: var(--bg); display: none; flex-direction: column; }
@@ -44,6 +48,9 @@ export function renderDesk(nonce: string): string {
 <div id="asks"></div>
 <h2>Today</h2>
 <ol id="log"></ol>
+<h2>Your ledger</h2>
+<ol id="ledger"></ol>
+<p class="status">Only you add payees here. Timo never changes the account of a payee already in this list.</p>
 </main>
 <div class="overlay" id="overlay"><button id="close-overlay">Close evidence</button><iframe id="evidence" title="What Timo saw"></iframe></div>
 <script nonce="${nonce}">${CLIENT}</script></body></html>`;
@@ -88,6 +95,10 @@ function draw(state) {
     const left = Math.max(0, Date.parse(timer.dataset.expires) - Date.now());
     timer.textContent = "Declines on its own in " + Math.floor(left / 60000) + ":" + String(Math.floor(left / 1000) % 60).padStart(2, "0");
   }
+  $("ledger").replaceChildren(...state.ledger.map((payee) => el("li", {},
+    el("span", { className: "mono", textContent: "…" + payee.accountEnd }),
+    el("span", { className: "mono", textContent: payee.phone }),
+    el("span", { textContent: payee.name + (payee.domains.length ? " · " + payee.domains.join(", ") : "") }))));
   if (state.log.length === 0) $("log").replaceChildren(el("li", { className: "empty", textContent: "No payments checked yet." }));
   else $("log").replaceChildren(...state.log.slice().reverse().map((entry) => el("li", {},
     el("span", { className: "mono", textContent: "#" + entry.seq }),
@@ -107,13 +118,21 @@ function drawAsk(ask) {
   const approve = el("button", { className: "approve", textContent: "Approve once", disabled: true });
   const decline = el("button", { className: "decline", textContent: "Decline" });
   const checked = el("input", { type: "checkbox" });
-  checked.addEventListener("change", () => { approve.disabled = !checked.checked; });
-  const answer = async (isApproved) => {
-    approve.disabled = decline.disabled = true;
-    const res = await fetch("/api/answer", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ seq: ask.seq, isApproved }) });
-    lastAnswer = !res.ok ? "#" + ask.seq + " was no longer waiting." : isApproved ? "You approved #" + ask.seq + ", Timo sends that exact payment once." : "You declined #" + ask.seq + ", nothing was sent.";
+  const canAdd = ask.rule === "payee-new";
+  const phone = el("input", { className: "phone mono", type: "tel", placeholder: "Phone you called, e.g. +34 600 123 456", autocomplete: "off" });
+  const add = el("button", { className: "add", textContent: "Approve and add to my ledger", disabled: true });
+  const error = el("p", { className: "error" });
+  const sync = () => { approve.disabled = !checked.checked; add.disabled = !checked.checked || phone.value.trim().length < 6; };
+  checked.addEventListener("change", sync);
+  phone.addEventListener("input", sync);
+  const answer = async (isApproved, addToLedger) => {
+    approve.disabled = decline.disabled = add.disabled = true;
+    const res = await fetch("/api/answer", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ seq: ask.seq, isApproved, addToLedger }) });
+    if (res.status === 409 && addToLedger) { error.textContent = (await res.json()).error; sync(); decline.disabled = false; return; }
+    lastAnswer = !res.ok ? "#" + ask.seq + " was no longer waiting." : addToLedger ? "You approved #" + ask.seq + " and added " + who + " to your ledger." : isApproved ? "You approved #" + ask.seq + ", Timo sends that exact payment once." : "You declined #" + ask.seq + ", nothing was sent.";
   };
   approve.addEventListener("click", () => answer(true));
+  add.addEventListener("click", () => answer(true, { phone: phone.value }));
   decline.addEventListener("click", () => answer(false));
   const timer = el("div", { className: "timer mono" });
   timer.dataset.expires = ask.expiresAt;
@@ -124,7 +143,9 @@ function drawAsk(ask) {
     el("div", { className: "money mono", textContent: ask.amount ? ask.amount + " EUR" : "" }),
     facts, ...flags, evidence,
     el("label", { className: "check" }, checked, el("span", { textContent: "I checked with them on a phone number I already had, not one from this message." })),
-    el("div", { className: "buttons" }, approve, decline),
+    canAdd ? phone : "",
+    el("div", { className: "buttons" }, approve, decline, canAdd ? add : ""),
+    error,
     timer);
 }
 

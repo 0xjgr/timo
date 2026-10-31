@@ -17,7 +17,12 @@ export type VerdictEntry = {
 };
 
 // note: stand-in is the eval's ideal guardian; timeout means nobody answered and the commit stays held
-export type GuardianAnswer = { isApproved: boolean; by: "guardian" | "stand-in" | "timeout" };
+export type GuardianAnswer = {
+  isApproved: boolean;
+  by: "guardian" | "stand-in" | "timeout";
+  // note: the guardian also added this payee to the ledger, after calling the phone they wrote down
+  addedPayee?: { id: string; name: string; iban: string; phone: string };
+};
 
 // threat: an approval outside the chain could be added later to excuse a payment, so answers are chained too
 export type DecisionEntry = {

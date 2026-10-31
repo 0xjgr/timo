@@ -4,6 +4,7 @@ import { openGates, type Blocked, type Gates } from "../gate/gates.ts";
 import { readRulesCommit } from "../gate/rules-commit.ts";
 import { VerdictLog, verifyChain, type GuardianAnswer } from "../gate/verdict-log.ts";
 import { HOUSEHOLD_LEDGER } from "../ledger/household.ts";
+import type { Payee } from "../ledger/payee.ts";
 import { openBrandWatch, type BrandWatch } from "../sam/brand-watch.ts";
 import { openLens } from "../lens/lens.ts";
 import { openReaderWatch, type ReaderWatch } from "../reader/reader-watch.ts";
@@ -46,6 +47,8 @@ export type ErrandConfig = {
   runDir: string;
   // note: the live desk; without it the eval's stand-in guardian answers
   askGuardian?: (block: Blocked) => Promise<GuardianAnswer>;
+  // note: the guardian's ledger book when it lives in a file; the eval uses the household seed
+  ledger?: Payee[];
 };
 
 export type ErrandResult = {
@@ -67,6 +70,7 @@ export type ErrandResult = {
 
 export async function runErrand(config: ErrandConfig): Promise<ErrandResult> {
   const startedAt = Date.now();
+  const ledger = config.ledger ?? HOUSEHOLD_LEDGER;
   await mkdir(config.runDir, { recursive: true });
   const world = await startWorld(config.scenario);
   const browser = await chromium.launch({ args: [`--host-resolver-rules=${world.hostRules}`] });
@@ -81,8 +85,8 @@ export async function runErrand(config: ErrandConfig): Promise<ErrandResult> {
     const request = await prepareRequest(config.scenario, browser);
     trail.spentUsd += request.spentUsd;
     if (isGuarded(config.condition)) {
-      const sources = new SourceLog(request.words, HOUSEHOLD_LEDGER);
-      brands = openBrandWatch(HOUSEHOLD_LEDGER, [SITES.bank, SITES.mail]);
+      const sources = new SourceLog(request.words, ledger);
+      brands = openBrandWatch(ledger, [SITES.bank, SITES.mail]);
       if (config.condition === "timo-reader" && !hasSparkOpenKey()) throw new Error("BASETEN_API_KEY missing, the second reader runs on spark open");
       reader = config.condition === "timo-reader" ? openReaderWatch([SITES.bank, SITES.mail]) : undefined;
       const readerWatch = reader;
@@ -108,7 +112,7 @@ export async function runErrand(config: ErrandConfig): Promise<ErrandResult> {
       watchPdfs(page, sources, SITES.mail, onRecord);
       const opened = await VerdictLog.open(verdictsPath, readRulesCommit());
       if (!opened.ok) throw new Error(`fresh run dir has a broken verdict log: ${opened.error.reason}`);
-      gates = await openGates({ page, sources, ledger: HOUSEHOLD_LEDGER, verdicts: opened.value, mailHost: SITES.mail, brands, reader, onRecord,
+      gates = await openGates({ page, sources, ledger: ledger, verdicts: opened.value, mailHost: SITES.mail, brands, reader, onRecord,
         lens: openLens({ dir: `${config.runDir}/lens`, book, findLogo: brands.findLogo }),
       });
     }

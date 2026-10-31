@@ -6,18 +6,22 @@ import { networkInterfaces } from "node:os";
 import { z } from "zod";
 import type { Blocked } from "../gate/gates.ts";
 import { isDecision, listVerdicts, verifyChain, type GuardianAnswer } from "../gate/verdict-log.ts";
-import type { Payee } from "../ledger/payee.ts";
+import type { LedgerBook } from "../ledger/ledger-book.ts";
 import { buildAskView, type AskView } from "./ask-view.ts";
 import { renderDesk } from "./render-desk.ts";
 
 export type Desk = { url: string; ask: (block: Blocked) => Promise<GuardianAnswer>; close: () => Promise<void> };
 
-type DeskOptions = { runDir: string; ledger: Payee[]; host?: string; port?: number; timeoutMs?: number };
+type DeskOptions = { runDir: string; book: LedgerBook; host?: string; port?: number; timeoutMs?: number };
 
 const COOKIE = "timo_desk";
 const MAX_BODY = 4096;
 const SESSION = z.object({ token: z.string().max(200) });
-const ANSWER = z.object({ seq: z.number().int().nonnegative(), isApproved: z.boolean() });
+const ANSWER = z.object({
+  seq: z.number().int().nonnegative(),
+  isApproved: z.boolean(),
+  addToLedger: z.object({ phone: z.string().max(30) }).optional(),
+});
 // threat: path traversal out of the run folder; only lens and teach files by exact shape
 const EVIDENCE = /^\/evidence\/((?:lens|teach)\/[a-z0-9-]+\.(html|png))$/;
 const TYPES: Record<string, string> = { html: "text/html; charset=utf-8", png: "image/png" };
@@ -25,15 +29,16 @@ const TYPES: Record<string, string> = { html: "text/html; charset=utf-8", png: "
 // threat: anyone on the network could approve a payment, so the desk wants the token from the
 // link it printed; the token rides in the url fragment, which never reaches a server log or a referer
 export async function openDesk(options: DeskOptions): Promise<Desk> {
-  const { runDir, ledger, host = "127.0.0.1", port = 4300, timeoutMs = 10 * 60_000 } = options;
+  const { runDir, book, host = "127.0.0.1", port = 4300, timeoutMs = 10 * 60_000 } = options;
   const token = randomBytes(18).toString("base64url");
   const session = randomBytes(18).toString("base64url");
-  const pending = new Map<number, { view: AskView; settle: (answer: GuardianAnswer) => void }>();
+  const pending = new Map<number, { view: AskView; block: Blocked; settle: (answer: GuardianAnswer) => void }>();
 
   const readState = async () => {
     const text = await readFile(`${runDir}/verdicts.jsonl`, "utf8").catch(() => "");
     const checked = verifyChain(text);
-    if (!checked.ok) return { pending: [...pending.values()].map((ask) => ask.view), chain: { ok: false, line: checked.error.line }, log: [] };
+    const ledger = book.payees.map((payee) => ({ name: payee.name, accountEnd: payee.iban.slice(-4), domains: payee.domains, phone: payee.phone }));
+    if (!checked.ok) return { pending: [...pending.values()].map((ask) => ask.view), chain: { ok: false, line: checked.error.line }, log: [], ledger };
     const answers = new Map(checked.value.filter(isDecision).map((entry) => [entry.decision.forSeq, entry.decision]));
     const log = listVerdicts(checked.value).map((entry) => ({
       seq: entry.seq,
@@ -43,7 +48,7 @@ export async function openDesk(options: DeskOptions): Promise<Desk> {
       target: entry.commit.targetDomain,
       answer: answers.get(entry.seq) ?? null,
     }));
-    return { pending: [...pending.values()].map((ask) => ask.view), chain: { ok: true, head: checked.value.at(-1)?.hash.slice(0, 12) ?? "empty" }, log };
+    return { pending: [...pending.values()].map((ask) => ask.view), chain: { ok: true, head: checked.value.at(-1)?.hash.slice(0, 12) ?? "empty" }, log, ledger };
   };
 
   const server = createServer((req, res) => {
@@ -78,7 +83,16 @@ export async function openDesk(options: DeskOptions): Promise<Desk> {
       if (!body.success) return sendJson(res, 400, { error: "bad answer" });
       const ask = pending.get(body.data.seq);
       if (!ask) return sendJson(res, 409, { error: "nothing waiting for that" });
-      ask.settle({ isApproved: body.data.isApproved, by: "guardian" });
+      if (!body.data.addToLedger) {
+        ask.settle({ isApproved: body.data.isApproved, by: "guardian" });
+        return sendJson(res, 200, { ok: true });
+      }
+      // threat: only a payee timo never saw may be added; a changed account for a known one stays a deny
+      if (!body.data.isApproved || ask.block.verdict.rule !== "payee-new") return sendJson(res, 409, { error: "only a new payee can be added" });
+      const added = await book.addPayee({ ...readCandidate(ask.block), phone: body.data.addToLedger.phone });
+      if (!added.ok) return sendJson(res, 409, { error: added.error });
+      const { id, name, iban, phone } = added.value;
+      ask.settle({ isApproved: true, by: "guardian", addedPayee: { id, name, iban, phone } });
       return sendJson(res, 200, { ok: true });
     }
     const evidence = req.method === "GET" ? path.match(EVIDENCE) : null;
@@ -98,7 +112,7 @@ export async function openDesk(options: DeskOptions): Promise<Desk> {
   const ask = async (block: Blocked): Promise<GuardianAnswer> => {
     const lens = `lens/verdict-${block.seq}.html`;
     const lensHref = await access(`${runDir}/${lens}`).then(() => `/evidence/${lens}`, () => undefined);
-    const view = buildAskView(block, ledger, timeoutMs, lensHref);
+    const view = buildAskView(block, book.payees, timeoutMs, lensHref);
     console.log(`[desk] ask seq=${block.seq} rule=${block.verdict.rule} waiting_s=${timeoutMs / 1000}`);
     return new Promise((resolve) => {
       // note: silence is a no; the commit stays held and the agent hears it was declined
@@ -108,7 +122,7 @@ export async function openDesk(options: DeskOptions): Promise<Desk> {
         pending.delete(block.seq);
         resolve(answer);
       };
-      pending.set(block.seq, { view, settle });
+      pending.set(block.seq, { view, block, settle });
     });
   };
 
@@ -120,6 +134,20 @@ export async function openDesk(options: DeskOptions): Promise<Desk> {
     });
 
   return { url, ask, close };
+}
+
+function readCandidate(block: Blocked) {
+  const find = (kind: string) => block.commit.values.find((trace) => trace.kind === kind);
+  const iban = find("iban");
+  const origin = iban?.origins.find((candidate) => candidate.kind === "foreign");
+  const amount = Number(find("amount")?.value);
+  return {
+    name: find("beneficiary")?.value ?? "",
+    iban: iban?.value ?? "",
+    // note: a mail sender's domain becomes the payee's domain, so their next bill traces to them
+    domain: origin?.kind === "foreign" ? origin.domain : undefined,
+    amount: Number.isFinite(amount) && amount > 0 ? amount : undefined,
+  };
 }
 
 function isSame(given: string, expected: string): boolean {
