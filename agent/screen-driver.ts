@@ -1,6 +1,7 @@
 import { writeFile } from "node:fs/promises";
 import type { Page } from "playwright";
 import type { Blocked, Gates } from "../gate/gates.ts";
+import type { GuardianAnswer } from "../gate/verdict-log.ts";
 import { describeAction, findTrigger, runAction, splitTyping } from "./actions.ts";
 import { createResponse, priceUsage, type ModelId, type OutputItem, type SafetyCheck } from "./responses.ts";
 
@@ -19,7 +20,7 @@ export type ScreenOptions = {
   // note: absent in the unguarded eval condition
   gates?: Gates;
   // note: stands in for the guardian's phone; without it an ask ends the errand
-  askGuardian?: (block: Blocked) => boolean;
+  askGuardian?: (block: Blocked) => Promise<GuardianAnswer>;
 };
 
 // note: filled while the loop runs, so a crash still leaves what was spent and seen
@@ -132,20 +133,20 @@ export async function driveScreen(options: ScreenOptions, trail: Trail): Promise
       for (const action of splitTyping(call.actions)) {
         const trigger = findTrigger(action);
         const held = trigger && options.gates ? await options.gates.checkTrigger(trigger) : null;
-        const answer = held?.verdict.kind === "ask" ? options.askGuardian?.(held) : undefined;
-        if (held && answer === true) {
+        const answer = held?.verdict.kind === "ask" && options.askGuardian ? await options.askGuardian(held) : undefined;
+        if (held && answer) await options.gates?.answerHeld(held, answer);
+        if (held && answer?.isApproved) {
           console.log(`[agent] step=${step} approved ${describeAction(action)}`);
           trail.blocks.push(held);
           trail.approvals++;
           notices.push(describeBlock(held, true));
-          options.gates?.approveHeld();
           await runAction(page, action);
           continue;
         }
         if (held) {
           console.log(`[agent] step=${step} held ${describeAction(action)}`);
           trail.blocks.push(held);
-          notices.push(describeBlock(held, answer));
+          notices.push(describeBlock(held, answer?.isApproved));
           break;
         }
         console.log(`[agent] step=${step} ${describeAction(action)}`);

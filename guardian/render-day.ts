@@ -1,4 +1,4 @@
-import type { VerdictEntry } from "../gate/verdict-log.ts";
+import type { GuardianAnswer, VerdictEntry } from "../gate/verdict-log.ts";
 import type { Payee } from "../ledger/payee.ts";
 
 export type ChainState = { ok: true; head: string } | { ok: false; line: number; reason: string };
@@ -6,7 +6,7 @@ export type ChainState = { ok: true; head: string } | { ok: false; line: number;
 export type GuardianDay = {
   title: string;
   chain: ChainState;
-  entries: { entry: VerdictEntry; lensHref?: string; cardHref?: string }[];
+  entries: { entry: VerdictEntry; answer?: GuardianAnswer; lensHref?: string; cardHref?: string }[];
   ledger: Payee[];
 };
 
@@ -43,7 +43,7 @@ export function renderDay(day: GuardianDay): string {
 <h2>Verdict log</h2>
 ${renderChain(day.chain)}
 <div class="scroll"><table>
-<tr><th>#</th><th>Time</th><th>Verdict</th><th>Rule</th><th class="reason">Why</th><th>Where</th><th>Evidence</th></tr>
+<tr><th>#</th><th>Time</th><th>Verdict</th><th>Rule</th><th class="reason">Why</th><th>Where</th><th>Answer</th><th>Evidence</th></tr>
 ${day.entries.map(renderRow).join("\n")}
 </table></div>
 <h2>Your ledger</h2>
@@ -60,12 +60,19 @@ function renderChain(chain: ChainState): string {
   return `<div class="chain broken"><b>Broken at line ${chain.line}:</b> ${escapeHtml(chain.reason)}. Entries from there on cannot be trusted and are not shown.</div>`;
 }
 
-function renderRow({ entry, lensHref, cardHref }: GuardianDay["entries"][number]): string {
+const ANSWER_BY: Record<GuardianAnswer["by"], string> = { guardian: "you", "stand-in": "stand-in", timeout: "nobody, timed out" };
+
+function renderAnswer(answer?: GuardianAnswer): string {
+  if (!answer) return "";
+  return `<span class="${answer.isApproved ? "allow" : "deny"}">${answer.isApproved ? "approved" : "declined"}</span> by ${ANSWER_BY[answer.by]}`;
+}
+
+function renderRow({ entry, answer, lensHref, cardHref }: GuardianDay["entries"][number]): string {
   const { verdict, commit } = entry;
   const links = [lensHref && `<a href="${lensHref}">lens</a>`, cardHref && `<a href="${cardHref}">card</a>`].filter(Boolean).join(" · ");
   return `<tr><td>${entry.seq}</td><td>${entry.at.slice(11, 19)}</td><td class="kind ${verdict.kind}">${verdict.kind.toUpperCase()}</td>
 <td class="rule">${verdict.kind === "allow" ? "" : verdict.rule}</td><td class="reason">${verdict.kind === "allow" ? "every value traced to you, your ledger or the payee's own site" : escapeHtml(verdict.reason)}</td>
-<td>${escapeHtml(commit.targetDomain)} via ${commit.via}</td><td>${links}</td></tr>`;
+<td>${escapeHtml(commit.targetDomain)} via ${commit.via}</td><td>${renderAnswer(answer)}</td><td>${links}</td></tr>`;
 }
 
 function escapeHtml(text: string): string {

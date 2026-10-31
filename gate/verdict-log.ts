@@ -16,12 +16,34 @@ export type VerdictEntry = {
   hash: string;
 };
 
+// note: stand-in is the eval's ideal guardian; timeout means nobody answered and the commit stays held
+export type GuardianAnswer = { isApproved: boolean; by: "guardian" | "stand-in" | "timeout" };
+
+// threat: an approval outside the chain could be added later to excuse a payment, so answers are chained too
+export type DecisionEntry = {
+  seq: number;
+  at: string;
+  decision: GuardianAnswer & { forSeq: number };
+  prevHash: string;
+  hash: string;
+};
+
+export type LogEntry = VerdictEntry | DecisionEntry;
+
+export function isDecision(entry: LogEntry): entry is DecisionEntry {
+  return "decision" in entry;
+}
+
+export function listVerdicts(entries: LogEntry[]): VerdictEntry[] {
+  return entries.filter((entry): entry is VerdictEntry => !isDecision(entry));
+}
+
 export type ChainBreak = { seq: number; line: number; reason: string };
 
 const GENESIS = "0".repeat(64);
 
 // note: hash over the exact json written, so verify only needs the line minus its hash field
-function hashEntry(unsealed: Omit<VerdictEntry, "hash">): string {
+function hashEntry(unsealed: Omit<LogEntry, "hash">): string {
   return createHash("sha256").update(JSON.stringify(unsealed)).digest("hex");
 }
 
@@ -53,16 +75,17 @@ export class VerdictLog {
   }
 
   append(commit: Commit, verdict: Verdict, followUp: FollowUp): Promise<VerdictEntry> {
-    const unsealed: Omit<VerdictEntry, "hash"> = {
-      seq: this.#seq++,
-      at: new Date().toISOString(),
-      rulesCommit: this.#rulesCommit,
-      commit,
-      verdict,
-      followUp,
-      prevHash: this.#head,
-    };
-    const entry: VerdictEntry = { ...unsealed, hash: hashEntry(unsealed) };
+    const seq = this.#seq++;
+    return this.#seal({ seq, at: new Date().toISOString(), rulesCommit: this.#rulesCommit, commit, verdict, followUp, prevHash: this.#head });
+  }
+
+  appendDecision(forSeq: number, answer: GuardianAnswer): Promise<DecisionEntry> {
+    const seq = this.#seq++;
+    return this.#seal({ seq, at: new Date().toISOString(), decision: { ...answer, forSeq }, prevHash: this.#head });
+  }
+
+  #seal<Entry extends LogEntry>(unsealed: Omit<Entry, "hash">): Promise<Entry> {
+    const entry = { ...unsealed, hash: hashEntry(unsealed) } as Entry;
     this.#head = entry.hash;
     const written = this.#queue.then(() => appendFile(this.#path, `${JSON.stringify(entry)}\n`));
     this.#queue = written;
@@ -70,15 +93,15 @@ export class VerdictLog {
   }
 }
 
-export function verifyChain(text: string): { ok: true; value: VerdictEntry[] } | { ok: false; error: ChainBreak } {
-  const entries: VerdictEntry[] = [];
+export function verifyChain(text: string): { ok: true; value: LogEntry[] } | { ok: false; error: ChainBreak } {
+  const entries: LogEntry[] = [];
   let head = GENESIS;
   const lines = text.split("\n").filter((line) => line.trim() !== "");
   for (const [index, line] of lines.entries()) {
     const fail = (reason: string) => ({ ok: false as const, error: { seq: index, line: index + 1, reason } });
-    let entry: VerdictEntry;
+    let entry: LogEntry;
     try {
-      entry = JSON.parse(line) as VerdictEntry;
+      entry = JSON.parse(line) as LogEntry;
     } catch {
       return fail("not json");
     }

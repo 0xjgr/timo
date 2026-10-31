@@ -13,18 +13,19 @@ import type { Trace } from "../provenance/trace.ts";
 import type { Commit } from "./commit.ts";
 import { readPendingForm, type FormField } from "./pending-form.ts";
 import { traceFields } from "./sensitive-fields.ts";
-import type { FollowUp, VerdictLog } from "./verdict-log.ts";
+import type { FollowUp, GuardianAnswer, VerdictLog } from "./verdict-log.ts";
 
 export type Trigger = { kind: "click"; x: number; y: number } | { kind: "enter" } | { kind: "space" };
 
-export type Blocked = { via: Commit["via"]; verdict: Exclude<Verdict, { kind: "allow" }> };
+// note: seq points at the verdict log entry, so the guardian's answer can name what it answers
+export type Blocked = { via: Commit["via"]; verdict: Exclude<Verdict, { kind: "allow" }>; seq: number; commit: Commit };
 
 export type Gates = {
   checkTrigger: (trigger: Trigger) => Promise<Blocked | null>;
   // note: network blocks happen outside the agent's turn, so the driver waits for them after each action
   takeNetworkBlocks: () => Promise<Blocked[]>;
-  // note: the guardian said yes to the last held click, so that exact submit may leave once
-  approveHeld: () => void;
+  // note: the answer is chained into the verdict log; a yes lets that exact held submit leave once
+  answerHeld: (block: Blocked, answer: GuardianAnswer) => Promise<void>;
 };
 
 const QUIET_MS = 250;
@@ -44,11 +45,11 @@ type GateContext = {
 export async function openGates(context: GateContext): Promise<Gates> {
   const { page, sources, mailHost } = context;
   const cleared: FormField[][] = [];
-  let held: FormField[] | undefined;
+  let held: { seq: number; fields: FormField[] } | undefined;
   const networkBlocks: Blocked[] = [];
   const inFlight = new Set<Promise<void>>();
 
-  const judge = async (commit: Commit, fields: FormField[]): Promise<Verdict> => {
+  const judge = async (commit: Commit, fields: FormField[]): Promise<{ verdict: Verdict; seq: number }> => {
     if (context.brands) {
       await context.brands.settle();
       commit.impostors = context.brands.listImpostors();
@@ -65,7 +66,7 @@ export async function openGates(context: GateContext): Promise<Gates> {
     await context.lens?.record(entry, page, fields).catch((error: unknown) => {
       console.log(`[lens] failed seq=${entry.seq} reason="${error instanceof Error ? error.message.split("\n")[0] : String(error)}"`);
     });
-    return verdict;
+    return { verdict, seq: entry.seq };
   };
 
   const checkTrigger = async (trigger: Trigger): Promise<Blocked | null> => {
@@ -85,13 +86,13 @@ export async function openGates(context: GateContext): Promise<Gates> {
       flags: [],
       impostors: [],
     };
-    const verdict = await judge(commit, form.fields);
+    const { verdict, seq } = await judge(commit, form.fields);
     if (verdict.kind === "allow") {
       cleared.push(form.fields);
       return null;
     }
-    held = verdict.kind === "ask" ? form.fields : undefined;
-    return { via: "click", verdict };
+    held = verdict.kind === "ask" ? { seq, fields: form.fields } : undefined;
+    return { via: "click", verdict, seq, commit };
   };
 
   // threat: a page script that posts payment details without a click, or swaps them after the click passed
@@ -121,9 +122,9 @@ export async function openGates(context: GateContext): Promise<Gates> {
       flags: [],
       impostors: [],
     };
-    const verdict = await judge(commit, fields);
+    const { verdict, seq } = await judge(commit, fields);
     if (verdict.kind === "allow") return route.continue();
-    networkBlocks.push({ via: "network", verdict });
+    networkBlocks.push({ via: "network", verdict, seq, commit });
     return route.abort("blockedbyclient");
   };
 
@@ -136,13 +137,15 @@ export async function openGates(context: GateContext): Promise<Gates> {
     return networkBlocks.splice(0);
   };
 
-  // todo: the guardian's answer goes in the verdict log once the guardian page writes it
-  const approveHeld = () => {
-    if (held) cleared.push(held);
+  const answerHeld = async (block: Blocked, answer: GuardianAnswer): Promise<void> => {
+    await context.verdicts.appendDecision(block.seq, answer);
+    console.log(`[guardian] ${answer.isApproved ? "approve" : "decline"} seq=${block.seq} by=${answer.by} rule=${block.verdict.rule}`);
+    // threat: a late yes for an older ask must not release whatever submit is held now
+    if (answer.isApproved && held?.seq === block.seq) cleared.push(held.fields);
     held = undefined;
   };
 
-  return { checkTrigger, takeNetworkBlocks, approveHeld };
+  return { checkTrigger, takeNetworkBlocks, answerHeld };
 }
 
 function readBody(request: Request): FormField[] {

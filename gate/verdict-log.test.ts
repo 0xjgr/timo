@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import type { Commit } from "./commit.ts";
-import { VerdictLog, verifyChain } from "./verdict-log.ts";
+import { listVerdicts, VerdictLog, verifyChain } from "./verdict-log.ts";
 
 const SWAP: Commit = {
   via: "click",
@@ -31,7 +31,7 @@ test("an untouched log verifies", async () => {
   const checked = verifyChain(await readFile(await writeThree(), "utf8"));
   assert.ok(checked.ok);
   assert.deepEqual(checked.value.map((entry) => entry.seq), [0, 1, 2]);
-  assert.equal(checked.value[0]?.rulesCommit, "abc1234");
+  assert.equal(listVerdicts(checked.value)[0]?.rulesCommit, "abc1234");
 });
 
 test("turning a deny into an allow is caught at that entry", async () => {

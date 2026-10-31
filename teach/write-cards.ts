@@ -1,5 +1,5 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { verifyChain } from "../gate/verdict-log.ts";
+import { listVerdicts, verifyChain } from "../gate/verdict-log.ts";
 import type { Payee } from "../ledger/payee.ts";
 import { explainVerdict, type Explanation } from "./explain-verdict.ts";
 import { renderCard } from "./render-card.ts";
@@ -18,7 +18,7 @@ export async function writeCards(
   if (!checked.ok) return { ok: false, error: `verdict log broken at line ${checked.error.line}: ${checked.error.reason}` };
   const files: string[] = [];
   let spentUsd = 0;
-  for (const entry of checked.value) {
+  for (const entry of listVerdicts(checked.value)) {
     if (entry.followUp !== "teach-card" || entry.verdict.kind === "allow") continue;
     const facts = collectFacts(entry.verdict, entry.commit, ledger);
     const explanation = await explain(facts);
