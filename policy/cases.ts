@@ -128,8 +128,10 @@ export const RULE_CASES: RuleCase[] = [
     rule: "amount-unbacked",
   },
   {
-    name: "second reader flags the portal page",
-    commit: transfer(LEGIT_VALUES, { flags: [{ sourceId: "portal", reason: "payment-change", quote: "we now collect payments through a new bank" }] }),
+    name: "the real sender's taken-over mailbox asks for ten times the bill, and only the reader sees the pressure",
+    commit: transfer([LEGIT_VALUES[0]!, amount("842.00", fromRealSender), LEGIT_VALUES[2]!], {
+      flags: [{ sourceId: "hijacked-invoice", reason: "pressure", quote: "pay today to avoid disconnection" }],
+    }),
     expected: "ask",
     rule: "reader-escalation",
   },
@@ -139,5 +141,20 @@ export const RULE_CASES: RuleCase[] = [
       flags: [{ sourceId: "hijacked-invoice", reason: "payment-change", quote: "Lumen Energy now collects payments through a new bank" }],
     }),
     expected: "allow",
+  },
+  {
+    name: "a usual amount to the ledger account, read only from a flagged mail",
+    commit: transfer([LEGIT_VALUES[0]!, amount(INVOICE_AMOUNT, fromLookalike), LEGIT_VALUES[2]!], {
+      flags: [{ sourceId: "fake-invoice", reason: "payment-change", quote: "only accepts transfers to the account below" }],
+    }),
+    expected: "allow",
+  },
+  {
+    name: "an unusual amount read only from a flagged mail still asks",
+    commit: transfer([LEGIT_VALUES[0]!, amount("842.00", fromLookalike), LEGIT_VALUES[2]!], {
+      flags: [{ sourceId: "fake-invoice", reason: "pressure", quote: "pay today to avoid disconnection" }],
+    }),
+    expected: "ask",
+    rule: "amount-unbacked",
   },
 ];

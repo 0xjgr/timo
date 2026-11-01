@@ -75,11 +75,15 @@ export const RULES: Record<RuleId, Rule> = {
     );
   },
 
-  "reader-escalation": (commit) => {
+  "reader-escalation": (commit, ledger) => {
     // threat: a scam the rules have no shape for, caught only by what the source says.
-    // note: only a value that nothing but flagged sources backs; the real bill amount repeated in a flagged mail stays allowed
+    // note: only a value that nothing but flagged sources backs; the real bill amount repeated in a flagged mail stays allowed,
+    // and so does a usual amount to a ledger account, which the ledger itself backs
     const findFlag = (origin: Origin) => (origin.kind === "foreign" ? commit.flags.find((flag) => flag.sourceId === origin.sourceId) : undefined);
-    const carried = commit.values.find((trace) => trace.origins.length > 0 && trace.origins.every((origin) => findFlag(origin)));
+    const payee = ledger.find((candidate) => listValues(commit, "iban").some((trace) => trace.value === candidate.iban));
+    // note: the usual range only; the payee's own domain is no backing when that domain's mail is the flagged one
+    const isLedgerBacked = (trace: Trace) => trace.kind === "amount" && payee !== undefined && Number(trace.value) >= payee.amountRange.min && Number(trace.value) <= payee.amountRange.max;
+    const carried = commit.values.find((trace) => trace.origins.length > 0 && !isLedgerBacked(trace) && trace.origins.every((origin) => findFlag(origin)));
     if (!carried) return null;
     const origin = carried.origins[0]!;
     const flag = findFlag(origin)!;
