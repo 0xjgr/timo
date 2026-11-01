@@ -19,6 +19,7 @@ function row(overrides: Partial<ErrandResult>): ErrandResult {
     asks: 0,
     approvals: 0,
     isChainIntact: true,
+    transfers: [],
     ...overrides,
   };
 }

@@ -15,7 +15,7 @@ import { watchPdfs } from "../provenance/pdf-reader.ts";
 import { SourceLog } from "../provenance/source-log.ts";
 import { judgeErrand, type Outcome } from "../world/judge.ts";
 import { GOALS, type Scenario } from "../world/scenario.ts";
-import { startWorld } from "../world/serve.ts";
+import { startWorld, type Transfer } from "../world/serve.ts";
 import { SITES } from "../world/sites.ts";
 import { describeRequest, prepareRequest, readPhotoSource } from "./carmen-request.ts";
 import type { ModelId } from "./responses.ts";
@@ -49,6 +49,8 @@ export type ErrandConfig = {
   askGuardian?: (block: Blocked) => Promise<GuardianAnswer>;
   // note: the guardian's ledger book when it lives in a file; the eval uses the household seed
   ledger?: Payee[];
+  // note: carmen's own words from the phone; the eval uses each scenario's written request
+  words?: string;
 };
 
 export type ErrandResult = {
@@ -66,6 +68,7 @@ export type ErrandResult = {
   asks: number;
   approvals: number;
   isChainIntact: boolean | null;
+  transfers: Transfer[];
 };
 
 export async function runErrand(config: ErrandConfig): Promise<ErrandResult> {
@@ -82,7 +85,7 @@ export async function runErrand(config: ErrandConfig): Promise<ErrandResult> {
   let reader: ReaderWatch | undefined;
   try {
     let gates: Gates | undefined;
-    const request = await prepareRequest(config.scenario, browser);
+    const request = await prepareRequest(config.scenario, browser, config.words);
     trail.spentUsd += request.spentUsd;
     if (isGuarded(config.condition)) {
       const sources = new SourceLog(request.words, ledger);
@@ -157,16 +160,17 @@ export async function runErrand(config: ErrandConfig): Promise<ErrandResult> {
     asks: trail.blocks.filter((block) => block.verdict.kind === "ask").length,
     approvals: trail.approvals,
     isChainIntact: isGuarded(config.condition) ? verifyChain(await readFile(verdictsPath, "utf8").catch(() => "")).ok : null,
+    transfers: world.transfers,
   };
   console.log(`[run] ${result.scenario} condition=${result.condition} outcome=${result.outcome} prompts=${result.humanPrompts} denies=${result.denies} stop="${result.stopReason}" usd=${result.spentUsd.toFixed(4)} turns=${result.turns}`);
-  await writeFile(`${config.runDir}/summary.json`, JSON.stringify({ ...result, safetyChecks: trail.safetyChecks, transfers: world.transfers, messages: world.messages }, null, 2));
+  await writeFile(`${config.runDir}/summary.json`, JSON.stringify({ ...result, safetyChecks: trail.safetyChecks, messages: world.messages }, null, 2));
   await writeFile(`${config.runDir}/responses.json`, JSON.stringify(trail.responses, null, 2));
   return result;
 }
 
 // note: an ideal guardian who knows the household: yes on a legit errand, no on an attack.
 // a real one can be fooled too, so the eval reports how often they were asked, not only the outcome
-async function answerAsGuardian(scenario: Scenario): Promise<GuardianAnswer> {
+export async function answerAsGuardian(scenario: Scenario): Promise<GuardianAnswer> {
   return { isApproved: GOALS[scenario].kind === "legit", by: "stand-in" };
 }
 

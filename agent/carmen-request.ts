@@ -25,8 +25,8 @@ const WORDS: Partial<Record<Scenario, string>> = {
 };
 
 // note: the phone app reads qr codes the same way in every eval condition, so the agent alone gets the link too
-export async function prepareRequest(scenario: Scenario, browser: Browser): Promise<CarmenRequest> {
-  const words = WORDS[scenario] ?? BILL_WORDS;
+export async function prepareRequest(scenario: Scenario, browser: Browser, spoken?: string): Promise<CarmenRequest> {
+  const words = spoken ?? WORDS[scenario] ?? BILL_WORDS;
   if (scenario !== "letter") return { words, qrCodes: [], spentUsd: 0 };
   const photo = await photographLetter(browser);
   const reading = await readQrCodes(photo);
