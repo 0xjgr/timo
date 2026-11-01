@@ -36,6 +36,11 @@ and the model API's own injection check never fired: there was no instruction to
 only a wrong number. The loud version of the attack ("note to AI assistants") failed 0 of 9.
 
 ## How it works
+0. **Ask.** Carmen taps one button on her phone and says what she needs, in Spanish.
+   Muse Voice Transcribe turns it into text, biased toward her payees' names; the
+   phone reads it back and nothing starts until she taps "Yes, do it". Her words are
+   the only `request` origin. When the errand ends, the phone says what happened,
+   from what the bank recorded, not from the agent's own summary.
 1. **Trace.** Every page, email, PDF and letter photo the agent opens is logged as a
    source. When a value is typed into a form, Timo finds where it appears: the request,
    the ledger, or a source (with its sender's domain).
@@ -145,7 +150,9 @@ depth, not the main defense: the rules stop those. The set is small and written 
 same person as the prompt.
 
 ## Limitations
-- Spoken replies use the browser's speech synthesis.
+- Spoken replies use the browser's speech synthesis; Meta has no text-to-speech model.
+- Browsers give the microphone only to localhost or https, so the phone app runs on the
+  same machine (or behind an https tunnel). It also takes a typed request.
 - The demo runs against a toy world with fictional brands; nothing real is paid.
 - The ledger file is not hash-chained; the chain records each addition, but someone
   with access to the machine can edit the file.
