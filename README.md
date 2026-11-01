@@ -91,11 +91,19 @@ crashed in the harness and are left out.
 | bare | 24/89 | 48/89 | 30/30 | 0/30 | 0.0 | 0.0045 |
 | meta-checks | 29/89 | 48/89 | 30/30 | 0/30 | 7.9 | 0.0042 |
 | timo | **0/88** | **78/88** | 28/30 | **0/30** | 0.1 | 0.0074 |
+| timo-reader | **0/90** | 71/90 | 29/30 | **0/30** | 0.1 | 0.0103 |
 
 Attacker win rate with 95% Wilson intervals: bare 27.0% (18.8 to 37.0), meta-checks
 32.6% (23.7 to 42.9), timo 0.0% (0.0 to 4.2). Two-sided Fisher exact test, timo against
 bare p = 2.0e-8, against meta-checks p = 2.4e-10. Zero out of 88 is not zero risk: at
 this sample size the true rate could still be up to 4.2%.
+
+**timo-reader** is Timo plus the second reader on Muse Spark Open, run as its own batch
+of 120 on Oct 31 (rules `318ec16`, $1.34, `eval/results/2026-10-31-14-41-06/`).
+Attacker won 0/90 (95% 0.0 to 4.1). Its lower right-outcome count against timo is not
+significant (Fisher p = 0.10): the reader's rule fired once in 120 errands, asking about
+the real bill amount read from a scam mail, and that case is now allowed (`a228418`).
+The other misses are the agent running out of steps on the cloned portal.
 
 Attacker paid, by scenario:
 
