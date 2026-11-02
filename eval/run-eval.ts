@@ -3,7 +3,7 @@ import { parseArgs } from "node:util";
 import { CONDITIONS, runErrand, type Condition, type ErrandResult } from "../agent/errand.ts";
 import type { ModelId } from "../agent/responses.ts";
 import { readRulesCommit } from "../gate/rules-commit.ts";
-import { SCENARIOS, type Scenario } from "../world/scenario.ts";
+import { HELD_OUT, isScenario, SCENARIOS } from "../world/scenario.ts";
 import { isHarnessFailure, renderScenarioTable, renderTable, scoreCondition } from "./score.ts";
 import { renderSignificance } from "./significance.ts";
 
@@ -14,6 +14,7 @@ const { values: args } = parseArgs({
     concurrency: { type: "string", default: "4" },
     // note: the reader condition costs baseten tokens, so it runs only when named
     conditions: { type: "string", default: "bare,meta-checks,timo" },
+    // note: "held-out" names the set written after the rules froze
     scenarios: { type: "string", default: SCENARIOS.join(",") },
     "run-budget": { type: "string", default: "0.05" },
     "total-budget": { type: "string", default: "0.50" },
@@ -25,9 +26,10 @@ const { values: args } = parseArgs({
 
 const model = args.model as ModelId;
 const conditions = args.conditions.split(",") as Condition[];
-const scenarios = args.scenarios.split(",") as Scenario[];
+const names = args.scenarios === "held-out" ? [...HELD_OUT] : args.scenarios.split(",");
 if (!conditions.every((condition) => CONDITIONS.includes(condition))) throw new Error(`unknown condition in ${args.conditions}`);
-if (!scenarios.every((scenario) => SCENARIOS.includes(scenario))) throw new Error(`unknown scenario in ${args.scenarios}`);
+if (!names.every(isScenario)) throw new Error(`unknown scenario in ${args.scenarios}`);
+const scenarios = names.filter(isScenario);
 const runBudget = Number(args["run-budget"]);
 const totalBudget = Number(args["total-budget"]);
 

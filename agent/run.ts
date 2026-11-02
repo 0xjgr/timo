@@ -7,7 +7,7 @@ import type { Blocked } from "../gate/gates.ts";
 import { openDesk } from "../guardian/live-desk.ts";
 import { openLedgerBook } from "../ledger/ledger-book.ts";
 import { writeCards } from "../teach/write-cards.ts";
-import { SCENARIOS, type Scenario } from "../world/scenario.ts";
+import { isScenario } from "../world/scenario.ts";
 import { transcribeRequest } from "../voice/transcribe.ts";
 import { answerAsGuardian, CONDITIONS, isGuarded, runErrand, type Condition } from "./errand.ts";
 import type { ModelId } from "./responses.ts";
@@ -30,9 +30,9 @@ const { values: args } = parseArgs({
   },
 });
 
-const scenario = args.scenario as Scenario;
+const scenario = args.scenario;
 const condition = args.condition as Condition;
-if (!SCENARIOS.includes(scenario)) throw new Error(`unknown scenario ${scenario}`);
+if (!isScenario(scenario)) throw new Error(`unknown scenario ${scenario}`);
 if (!CONDITIONS.includes(condition)) throw new Error(`unknown condition ${condition}`);
 
 const model = args.model as ModelId;
