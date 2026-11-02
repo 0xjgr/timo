@@ -1,4 +1,5 @@
 import type { Page } from "playwright";
+import { readSettled } from "../gate/pending-form.ts";
 import type { Action } from "./responses.ts";
 
 const SNAP_PX = 20;
@@ -8,7 +9,7 @@ const SNAP_PX = 20;
 export async function snapClick(page: Page, action: Action): Promise<Action> {
   if (action.type !== "click" && action.type !== "double_click") return action;
   if (action.type === "click" && action.button !== undefined && action.button !== "left") return action;
-  const target = await page.evaluate(([x, y, reach]) => {
+  const target = await readSettled(page, () => page.evaluate(([x, y, reach]) => {
     const SNAPPABLE = 'a[href], input:not([type=submit]):not([type=button]):not([type=image]):not([type=hidden]), textarea, select';
     const ACTIVE = `${SNAPPABLE}, button, [role=button], label, input`;
     const hit = document.elementFromPoint(x, y);
@@ -21,7 +22,7 @@ export async function snapClick(page: Page, action: Action): Promise<Action> {
       if (gap <= reach && (!best || gap < best.gap)) best = { x: Math.round(box.left + box.width / 2), y: Math.round(box.top + box.height / 2), gap };
     }
     return best;
-  }, [action.x, action.y, SNAP_PX] as const);
+  }, [action.x, action.y, SNAP_PX] as const));
   if (!target) return action;
   console.log(`[agent] snap from=${action.x},${action.y} to=${target.x},${target.y} gap=${target.gap.toFixed(0)}`);
   return { ...action, x: target.x, y: target.y };

@@ -9,7 +9,7 @@ type Trigger = { kind: "click"; x: number; y: number } | { kind: "enter" } | { k
 
 // note: reads the form as it is right now, including values the page pre-filled or a script changed
 export function readPendingForm(page: Page, trigger: Trigger): Promise<PendingForm | null> {
-  return page.evaluate((trigger) => {
+  return readSettled(page, () => page.evaluate((trigger) => {
     const findForm = (): HTMLFormElement | null => {
       const active = document.activeElement;
       // threat: tab to the send button and press enter or space, a submit with no click on it
@@ -38,5 +38,16 @@ export function readPendingForm(page: Page, trigger: Trigger): Promise<PendingFo
       return [{ name: element.name, label: label.trim(), type: element.type, value: element.value, rect }];
     });
     return { action: form.action, method: form.method, fields };
-  }, trigger);
+  }, trigger));
+}
+
+// note: a turn can hold two clicks, and the first may follow a link while the second is being read
+export async function readSettled<T>(page: Page, read: () => Promise<T>): Promise<T> {
+  try {
+    return await read();
+  } catch (error) {
+    if (!(error instanceof Error) || !error.message.includes("Execution context was destroyed")) throw error;
+    await page.waitForLoadState("load");
+    return read();
+  }
 }
