@@ -149,6 +149,22 @@ The quiet ones are the attacks that worked best on the bare agent, so the reader
 depth, not the main defense: the rules stop those. The set is small and written by the
 same person as the prompt.
 
+## Run locally
+Needs Node 24 and a Meta Model API key from dev.meta.ai.
+
+```sh
+npm ci && npx playwright install chromium
+cp .env.example .env    # then paste META_API_KEY
+npm run errand -- --scenario swap
+```
+
+The errand runs against a toy world on localhost (webmail, Lumen's portal, a lookalike
+domain, Banco Sol) and writes its verdict log, lens page, Carmen's card and the guardian
+page under `runs/`. Each errand costs about $0.01. Other flags: `--scenario <name>` (any
+of the 21 in `world/scenario.ts`), `--condition bare|meta-checks|timo|timo-reader`,
+`--guardian live` (desk on :4300), `--phone` (Carmen's app on :4400). `timo-reader` also
+needs `BASETEN_API_KEY`. The eval is `npm run eval`; it stops at `--total-budget` dollars.
+
 ## Limitations
 - Spoken replies use the browser's speech synthesis; Meta has no text-to-speech model.
 - Browsers give the microphone only to localhost or https, so the phone app runs on the
