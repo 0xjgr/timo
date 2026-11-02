@@ -67,6 +67,11 @@ only a wrong number. The loud version of the attack ("note to AI assistants") fa
 5. **Log.** Every verdict and every guardian answer is one line in a hash chain;
    `npm run verify` checks it, and the teach card and guardian pages only read a
    verified log.
+6. **Teach.** After a block, Carmen gets one screen: the scam, the two account endings,
+   and the phone number she already has. Muse Spark Open writes the two sentences from
+   facts Timo built (never from the mail's text), so what Timo learned about her
+   household stays on an open model the family could host. Code rejects an answer with
+   an account number, a link or a number not in the facts, and falls back to a template.
 
 ## Threat model
 - **Assets:** money, household secrets (bank login), and the user's attention.
