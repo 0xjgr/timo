@@ -8,6 +8,12 @@ cells to tell self from foreign. Timo does the same with the values an agent typ
 
 Work in progress, built during the Meta Global AI Developer Hackathon (Oct 26 - Nov 4, 2026).
 
+![A fake invoice swaps the IBAN. The agent types it, Timo denies the click with payee-drift, and the agent goes back and pays the real bill.](docs/timo-swap.gif)
+
+*A fake invoice that only swaps the IBAN. The agent falls for it; Timo stops the click
+(`payee-drift`), shows where each value came from, and the agent pays the real bill instead.
+Real run, Muse Spark 1.3, `runs/eval-2026-10-29-15-33-54/timo-swap-7`.*
+
 ## Vocabulary
 The same words are used in the code, the UI and the video.
 
