@@ -45,9 +45,9 @@ function readKey(): string {
   return key;
 }
 
-async function postJson(path: string, body: unknown): Promise<{ ok: true; value: any } | { ok: false; error: string }> {
+async function postJson(path: string, body: unknown, timeoutMs = REQUEST_TIMEOUT_MS): Promise<{ ok: true; value: any } | { ok: false; error: string }> {
   for (let attempt = 1; ; attempt++) {
-    const sent = await sendOnce(path, body);
+    const sent = await sendOnce(path, body, timeoutMs);
     if (sent.ok && sent.status < 400) return { ok: true, value: JSON.parse(sent.text) };
     const error = sent.ok ? `http ${sent.status}: ${sent.text.slice(0, 600)}` : sent.error;
     // note: the api returns transient 503 "persistence service error" mid-run, and now and then never answers
@@ -60,13 +60,13 @@ async function postJson(path: string, body: unknown): Promise<{ ok: true; value:
 const REQUEST_TIMEOUT_MS = 45_000;
 
 // threat: a request the api never answers held all four eval workers for 18 hours
-async function sendOnce(path: string, body: unknown): Promise<{ ok: true; status: number; text: string } | { ok: false; error: string }> {
+async function sendOnce(path: string, body: unknown, timeoutMs: number): Promise<{ ok: true; status: number; text: string } | { ok: false; error: string }> {
   try {
     const res = await fetch(`${API}${path}`, {
       method: "POST",
       headers: { authorization: `Bearer ${readKey()}`, "content-type": "application/json" },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      signal: AbortSignal.timeout(timeoutMs),
     });
     return { ok: true, status: res.status, text: await res.text() };
   } catch (error) {
@@ -75,8 +75,9 @@ async function sendOnce(path: string, body: unknown): Promise<{ ok: true; status
   }
 }
 
-export function createResponse(body: Record<string, unknown>): Promise<Reply> {
-  return postJson("/responses", body);
+// note: a long text answer from wonder needs minutes; screen steps keep the short timeout
+export function createResponse(body: Record<string, unknown>, timeoutMs?: number): Promise<Reply> {
+  return postJson("/responses", body, timeoutMs);
 }
 
 export async function countInputTokens(body: Record<string, unknown>): Promise<number | string> {
