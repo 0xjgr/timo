@@ -38,6 +38,7 @@ function transfer(values: Trace[], overrides: Partial<Commit> = {}): Commit {
     impostors: [],
     stated: [],
     checked: [PORTAL_SHOWS],
+    sent: [],
     ...overrides,
   };
 }
@@ -67,6 +68,17 @@ export const RULE_CASES: RuleCase[] = [
     commit: transfer(LEGIT_VALUES, { checked: [{ payeeId: "lumen", url: "http://lumen-energy.es/portal", ok: false, error: "timeout" }] }),
     expected: "ask",
     rule: "amount-unverified",
+  },
+  {
+    name: "the real bill paid a second time in the same errand",
+    commit: transfer(LEGIT_VALUES, { sent: [{ iban: compactIban(LUMEN_IBAN), amount: INVOICE_AMOUNT }] }),
+    expected: "ask",
+    rule: "payee-repeat",
+  },
+  {
+    name: "an earlier payment in the errand went to another account",
+    commit: transfer(LEGIT_VALUES, { sent: [{ iban: compactIban(ATTACKER_IBAN), amount: "10.00" }] }),
+    expected: "allow",
   },
   {
     name: "the bill amount read on a clone, but lumen's own page shows the same",

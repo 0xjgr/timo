@@ -9,7 +9,7 @@ import type { Lens } from "../lens/lens.ts";
 import type { ReaderWatch } from "../reader/reader-watch.ts";
 import { recordPage, type SourceHook } from "../provenance/page-reader.ts";
 import type { SourceLog } from "../provenance/source-log.ts";
-import type { BillCheck, Trace } from "../provenance/trace.ts";
+import type { BillCheck, Sent, Trace } from "../provenance/trace.ts";
 import type { Commit } from "./commit.ts";
 import { checkBill } from "./check-bill.ts";
 import { readPendingForm, type FormField } from "./pending-form.ts";
@@ -51,6 +51,7 @@ export async function openGates(context: GateContext): Promise<Gates> {
   const inFlight = new Set<Promise<void>>();
   // note: one look per payee and errand; the bill does not change while the agent works
   const bills = new Map<string, Promise<BillCheck | undefined>>();
+  const sent: Sent[] = [];
 
   const judge = async (commit: Commit, fields: FormField[]): Promise<{ verdict: Verdict; seq: number }> => {
     if (context.brands) {
@@ -93,6 +94,7 @@ export async function openGates(context: GateContext): Promise<Gates> {
       impostors: [],
       stated: sources.listStatements(),
       checked: [],
+      sent: [...sent],
     };
     const { verdict, seq } = await judge(commit, form.fields);
     if (verdict.kind === "allow") {
@@ -113,12 +115,13 @@ export async function openGates(context: GateContext): Promise<Gates> {
 
   const judgeRequest = async (route: Route, request: Request): Promise<void> => {
     const fields = readBody(request);
+    const values = traceFields(fields, sources);
     const match = cleared.findIndex((checked) => isSameSubmit(checked, fields));
     if (match !== -1) {
       cleared.splice(match, 1);
+      recordSent(sent, values);
       return route.continue();
     }
-    const values = traceFields(fields, sources);
     if (values.length === 0) return route.continue();
     const commit: Commit = {
       via: "network",
@@ -131,9 +134,13 @@ export async function openGates(context: GateContext): Promise<Gates> {
       impostors: [],
       stated: sources.listStatements(),
       checked: [],
+      sent: [...sent],
     };
     const { verdict, seq } = await judge(commit, fields);
-    if (verdict.kind === "allow") return route.continue();
+    if (verdict.kind === "allow") {
+      recordSent(sent, values);
+      return route.continue();
+    }
     networkBlocks.push({ via: "network", verdict, seq, commit });
     return route.abort("blockedbyclient");
   };
@@ -156,6 +163,11 @@ export async function openGates(context: GateContext): Promise<Gates> {
   };
 
   return { checkTrigger, takeNetworkBlocks, answerHeld };
+}
+
+function recordSent(sent: Sent[], values: Trace[]): void {
+  const amount = values.find((trace) => trace.kind === "amount")?.value;
+  for (const trace of values) if (trace.kind === "iban") sent.push({ iban: trace.value, amount });
 }
 
 function readBody(request: Request): FormField[] {

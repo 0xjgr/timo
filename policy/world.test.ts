@@ -41,6 +41,7 @@ function submitTransfer(log: SourceLog, iban: string, amount = "84,20"): Commit 
     flags: [],
     impostors: [],
     stated: log.listStatements(),
+    sent: [],
     checked: [{ payeeId: "lumen", url: "http://lumen-energy.es/portal", ok: true, amounts: extractAmounts(readText(renderPortal())) }],
   };
 }

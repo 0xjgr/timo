@@ -4,6 +4,7 @@ export const RULE_IDS = [
   "secret-off-domain",
   "brand-impostor",
   "commit-outside-gate",
+  "payee-repeat",
   "payee-new",
   "amount-unbacked",
   "amount-disputed",

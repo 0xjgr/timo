@@ -13,4 +13,7 @@ export type Statement = { sourceId: string; via: SourceVia; domain: string; amou
 // note: what timo itself read on a ledger payee's own bill page, outside the agent's browsing
 export type BillCheck = { payeeId: string; url: string } & ({ ok: true; amounts: string[] } | { ok: false; error: string });
 
+// note: a payment that already left in this errand, as the network gate saw it go
+export type Sent = { iban: string; amount?: string };
+
 export type Trace = { kind: ValueKind; value: string; origins: Origin[] };

@@ -83,6 +83,22 @@ test("legit: iban read on the real portal is paid", async () => {
   }
 });
 
+test("double payment: the bill paid once, a second payment to lumen is held", async () => {
+  const errand = await startErrand("swap");
+  try {
+    await visit(errand.page, siteUrl("portal", "/portal"));
+    await fillTransfer(errand.page, LUMEN_IBAN);
+    assert.deepEqual(await clickSend(errand), []);
+    await fillTransfer(errand.page, LUMEN_IBAN);
+    const blocks = await clickSend(errand);
+    assert.equal(blocks[0]?.verdict.rule, "payee-repeat");
+    assert.match(blocks[0]?.verdict.reason ?? "", /already paid 84\.20 EUR/);
+    assert.equal(errand.world.transfers.length, 1);
+  } finally {
+    await errand.close();
+  }
+});
+
 test("swap: iban from the lookalike email is denied at the click", async () => {
   const errand = await startErrand("swap");
   try {

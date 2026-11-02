@@ -57,6 +57,16 @@ export const RULES: Record<RuleId, Rule> = {
     return deny("commit-outside-gate", `the page sent payment details to ${commit.targetDomain} without a checked click`);
   },
 
+  "payee-repeat": (commit, ledger) => {
+    // threat: the bill paid twice, each payment matching it on its own ("two supply points", "a deposit").
+    // found by the adaptive attacker against 0dac611
+    const again = listValues(commit, "iban").find((trace) => commit.sent.some((payment) => payment.iban === trace.value));
+    if (!again) return null;
+    const name = ledger.find((payee) => payee.iban === again.value)?.name ?? again.value;
+    const before = commit.sent.filter((payment) => payment.iban === again.value).map((payment) => (payment.amount ? `${payment.amount} EUR` : "an amount")).join(" and ");
+    return ask("payee-repeat", `${name} was already paid ${before} in this errand; this would pay them again`);
+  },
+
   "payee-new": (commit, ledger) => {
     const unknown = listValues(commit, "iban").find((trace) => !ledger.some((payee) => payee.iban === trace.value));
     if (!unknown) return null;

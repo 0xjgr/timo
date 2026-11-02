@@ -17,6 +17,7 @@ const SWAP: Commit = {
   impostors: [],
   stated: [],
   checked: [],
+  sent: [],
 };
 
 async function writeThree(): Promise<string> {
