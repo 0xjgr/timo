@@ -29,7 +29,7 @@ export async function writeAttacks(brief: string, history: string, count: number
     reasoning: { effort: "medium" },
     max_output_tokens: 24_000,
     store: false,
-  }, 240_000);
+  }, 480_000);
   if (!reply.ok) return { ok: false, error: reply.error, spentUsd: 0 };
   const spentUsd = priceUsage(ATTACKER_MODEL, reply.value.usage);
   const text = reply.value.output

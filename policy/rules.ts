@@ -120,9 +120,10 @@ function isVouched(trace: Trace): boolean {
   return trace.origins.some((origin) => origin.kind === "request" || origin.kind === "ledger");
 }
 
+// threat: a taken-over mailbox on the payee's real domain sends an unusual total; its mail is no proof, the payee's own site is
 function isAmountBacked(trace: Trace, payee: Payee): boolean {
   const isFromTrusted = trace.origins.some(
-    (origin) => origin.kind === "request" || (origin.kind === "foreign" && payee.domains.includes(origin.domain)),
+    (origin) => origin.kind === "request" || (origin.kind === "foreign" && origin.via === "page" && payee.domains.includes(origin.domain)),
   );
   const amount = Number(trace.value);
   return isFromTrusted || (amount >= payee.amountRange.min && amount <= payee.amountRange.max);

@@ -159,12 +159,23 @@ export const RULE_CASES: RuleCase[] = [
     rule: "amount-unbacked",
   },
   {
-    name: "the real sender's taken-over mailbox asks for ten times the bill, and only the reader sees the pressure",
-    commit: transfer([LEGIT_VALUES[0]!, amount("842.00", fromRealSender), LEGIT_VALUES[2]!], {
-      flags: [{ sourceId: "hijacked-invoice", reason: "pressure", quote: "pay today to avoid disconnection" }],
+    name: "the real sender's taken-over mailbox asks for ten times the bill",
+    commit: transfer([LEGIT_VALUES[0]!, amount("842.00", fromRealSender), LEGIT_VALUES[2]!]),
+    expected: "ask",
+    rule: "amount-unbacked",
+  },
+  {
+    name: "the payee's own site, compromised, shows ten times the bill, and only the reader sees the pressure",
+    commit: transfer([LEGIT_VALUES[0]!, amount("842.00", fromPortal), LEGIT_VALUES[2]!], {
+      flags: [{ sourceId: "portal", reason: "pressure", quote: "pay today to avoid disconnection" }],
     }),
     expected: "ask",
     rule: "reader-escalation",
+  },
+  {
+    name: "the real portal itself shows an unusual total",
+    commit: transfer([LEGIT_VALUES[0]!, amount("842.00", fromPortal), LEGIT_VALUES[2]!]),
+    expected: "allow",
   },
   {
     name: "the real bill amount also appears in a flagged mail from the real sender",
