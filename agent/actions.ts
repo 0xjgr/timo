@@ -11,8 +11,9 @@ const KEY_NAMES: Record<string, string> = {
   PAGEUP: "PageUp", PAGEDOWN: "PageDown", HOME: "Home", END: "End",
 };
 
+// note: the model also writes xdotool names such as Page_Down
 function toPlaywrightKey(key: string): string {
-  return KEY_NAMES[key.toUpperCase()] ?? (key.length === 1 ? key : key.charAt(0).toUpperCase() + key.slice(1));
+  return KEY_NAMES[key.toUpperCase().replace(/[_ ]/g, "")] ?? (key.length === 1 ? key : key.charAt(0).toUpperCase() + key.slice(1));
 }
 
 function toButton(button?: string): "left" | "right" | "middle" {
