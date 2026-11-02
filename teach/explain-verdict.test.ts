@@ -1,9 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import type { Reply } from "../agent/responses.ts";
 import { LEDGER, RULE_CASES } from "../policy/cases.ts";
 import { judgeCommit } from "../policy/judge.ts";
-import { explainVerdict, findProblem, writeTemplate } from "./explain-verdict.ts";
+import { explainVerdict, findProblem, writeTemplate, type Write } from "./explain-verdict.ts";
 import { collectFacts, type VerdictFacts } from "./verdict-facts.ts";
 
 const blocked = RULE_CASES.flatMap((ruleCase) => {
@@ -13,9 +12,8 @@ const blocked = RULE_CASES.flatMap((ruleCase) => {
 
 const swap = blocked.find((entry) => entry.name === "iban swap from a lookalike domain")!.facts;
 
-function answer(text: string): () => Promise<Reply> {
-  const usage = { input_tokens: 300, output_tokens: 40 };
-  return async () => ({ ok: true, value: { id: "r", status: "completed", usage, output: [{ type: "message", content: [{ type: "output_text", text }] }] } });
+function answer(text: string): Write {
+  return { by: "spark-open", write: async () => ({ ok: true, text, spentUsd: 0.0001 }) };
 }
 
 test("facts for an iban swap name the payee and the two account endings, never a full iban", () => {
@@ -35,7 +33,7 @@ test("the template passes its own checks for every blocking rule case", () => {
 test("a model answer that sticks to the facts is used", async () => {
   const text = "Timo stopped this payment because the bill looked like Lumen Energy but asked you to pay the account ending in 7892. Nothing was sent.";
   const explanation = await explainVerdict(swap, answer(text));
-  assert.equal(explanation.by, "model");
+  assert.equal(explanation.by, "spark-open");
   assert.equal(explanation.text, text);
 });
 
@@ -54,7 +52,7 @@ test("a model answer with an account number, a link, a new number or no stop fal
 });
 
 test("an api failure falls back to the template", async () => {
-  const explanation = await explainVerdict(swap, async () => ({ ok: false, error: "http 503" }));
+  const explanation = await explainVerdict(swap, { by: "spark", write: async () => ({ ok: false, error: "http 503", spentUsd: 0 }) });
   assert.deepEqual(explanation, { text: writeTemplate(swap), by: "template", spentUsd: 0 });
 });
 

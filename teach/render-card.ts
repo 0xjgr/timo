@@ -21,6 +21,8 @@ const LESSONS: Record<RuleId, (payee?: Payee) => string> = {
   "reader-escalation": () => "When a message asks to change who gets paid, your family checks it first.",
 };
 
+const WRITER_NAMES: Record<Explanation["by"], string> = { "spark-open": "Muse Spark Open", spark: "Muse Spark", template: "Timo's template" };
+
 const SOURCE_NAMES: Record<SourceVia, string> = { email: "email", page: "page", pdf: "PDF", photo: "letter" };
 
 const STYLE = `
@@ -62,7 +64,7 @@ ${isPairShown ? `<div class="pair">
 </div>` : ""}
 <div class="lesson"><small>Next time</small>${escapeHtml(LESSONS[facts.rule](payee))}</div>
 <p class="safe">${facts.kind === "deny" ? "Nothing was sent. Your money is where it was." : "Nothing is sent until your family answers."}</p>
-<footer>verdict ${entry.seq} · rule ${facts.rule} · ${entry.at} · hash ${entry.hash.slice(0, 12)} · words by ${explanation.by === "model" ? "Muse Spark" : "Timo's template"}</footer>
+<footer>verdict ${entry.seq} · rule ${facts.rule} · ${entry.at} · hash ${entry.hash.slice(0, 12)} · words by ${WRITER_NAMES[explanation.by]}</footer>
 </main></body></html>`;
 }
 

@@ -1,9 +1,14 @@
-import { createResponse, priceUsage, type ModelId, type Reply } from "../agent/responses.ts";
+import { createResponse, priceUsage, type ModelId } from "../agent/responses.ts";
+import { chatSparkOpen, hasSparkOpenKey } from "../reader/spark-open.ts";
 import type { VerdictFacts } from "./verdict-facts.ts";
 
-export type Explanation = { text: string; by: "model" | "template"; spentUsd: number };
+export type Writer = "spark-open" | "spark";
 
-type Ask = (body: Record<string, unknown>) => Promise<Reply>;
+export type Explanation = { text: string; by: Writer | "template"; spentUsd: number };
+
+export type Written = { ok: true; text: string; spentUsd: number } | { ok: false; error: string; spentUsd: number };
+
+export type Write = { by: Writer; write: (instructions: string, facts: string) => Promise<Written> };
 
 const MODEL: ModelId = "muse-spark-1.3-contributor";
 
@@ -21,31 +26,69 @@ If kind is "deny", say the payment was stopped and nothing was sent.
 If kind is "ask", say Timo is asking her family before anything is sent.`;
 
 // note: the model only rewords; a deny stays a deny whatever it writes, and a bad answer falls back to the template
-export async function explainVerdict(facts: VerdictFacts, ask: Ask = createResponse): Promise<Explanation> {
-  const reply = await ask({
-    model: MODEL,
-    instructions: INSTRUCTIONS,
-    input: [{ role: "user", content: [{ type: "input_text", text: JSON.stringify(facts) }] }],
-    reasoning: { effort: "low" },
-    store: false,
-  });
-  if (!reply.ok) {
-    console.log(`[explain] fallback rule=${facts.rule} reason="${reply.error.slice(0, 80)}"`);
-    return { text: writeTemplate(facts), by: "template", spentUsd: 0 };
+export async function explainVerdict(facts: VerdictFacts, writer: Write = pickWriter()): Promise<Explanation> {
+  const written = await writer.write(INSTRUCTIONS, JSON.stringify(facts));
+  if (!written.ok) {
+    console.log(`[explain] fallback rule=${facts.rule} reason="${written.error.slice(0, 80)}"`);
+    return { text: writeTemplate(facts), by: "template", spentUsd: written.spentUsd };
   }
-  const spentUsd = priceUsage(MODEL, reply.value.usage);
-  const text = reply.value.output
-    .flatMap((item) => (item.type === "message" && "content" in item ? item.content : []))
-    .map((part) => part.text ?? "")
-    .join(" ")
-    .trim();
-  const problem = findProblem(text, facts);
+  const problem = findProblem(written.text, facts);
   if (problem) {
     console.log(`[explain] fallback rule=${facts.rule} reason="${problem}"`);
-    return { text: writeTemplate(facts), by: "template", spentUsd };
+    return { text: writeTemplate(facts), by: "template", spentUsd: written.spentUsd };
   }
-  console.log(`[explain] model rule=${facts.rule} usd=${spentUsd.toFixed(5)}`);
-  return { text, by: "model", spentUsd };
+  console.log(`[explain] ${writer.by} rule=${facts.rule} usd=${written.spentUsd.toFixed(5)}`);
+  return { text: written.text, by: writer.by, spentUsd: written.spentUsd };
+}
+
+// note: the open-weights model writes carmen's words when a baseten key is set, so what timo read about her
+// household can stay on a model the family could host; without the key the hosted spark api writes them
+export function pickWriter(): Write {
+  return hasSparkOpenKey() ? SPARK_OPEN_WRITER : SPARK_WRITER;
+}
+
+const SPARK_OPEN_WRITER: Write = {
+  by: "spark-open",
+  write: async (instructions, facts) => {
+    const reply = await chatSparkOpen([
+      { role: "system", content: `${instructions}\nAnswer in JSON: {"text": "..."}` },
+      { role: "user", content: facts },
+    ], 3000);
+    if (!reply.ok) return reply;
+    const text = readText(reply.value.text);
+    return text === undefined ? { ok: false, error: "no text field", spentUsd: reply.value.spentUsd } : { ok: true, text, spentUsd: reply.value.spentUsd };
+  },
+};
+
+const SPARK_WRITER: Write = {
+  by: "spark",
+  write: async (instructions, facts) => {
+    const reply = await createResponse({
+      model: MODEL,
+      instructions,
+      input: [{ role: "user", content: [{ type: "input_text", text: facts }] }],
+      reasoning: { effort: "low" },
+      store: false,
+    });
+    if (!reply.ok) return { ok: false, error: reply.error, spentUsd: 0 };
+    const text = reply.value.output
+      .flatMap((item) => (item.type === "message" && "content" in item ? item.content : []))
+      .map((part) => part.text ?? "")
+      .join(" ")
+      .trim();
+    return { ok: true, text, spentUsd: priceUsage(MODEL, reply.value.usage) };
+  },
+};
+
+function readText(json: string): string | undefined {
+  // note: json mode on baseten still lets a truncated answer through
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(json);
+  } catch {
+    return undefined;
+  }
+  return typeof parsed === "object" && parsed !== null && "text" in parsed && typeof parsed.text === "string" ? parsed.text.trim() : undefined;
 }
 
 // threat: an explainer that echoes or invents an account, a link or a number tells carmen something timo never checked

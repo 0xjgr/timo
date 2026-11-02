@@ -42,7 +42,7 @@ test("an edited verdict log writes no card", async () => {
 
 test("model words are escaped on the card", async () => {
   const runDir = await logSwap();
-  const written = await writeCards(runDir, LEDGER, async () => ({ text: "<script>alert(1)</script>", by: "model", spentUsd: 0 }));
+  const written = await writeCards(runDir, LEDGER, async () => ({ text: "<script>alert(1)</script>", by: "spark-open", spentUsd: 0 }));
   assert.ok(written.ok);
   const html = await readFile(written.value.files[0]!, "utf8");
   assert.doesNotMatch(html, /<script>/);
