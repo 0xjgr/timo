@@ -2,7 +2,7 @@ import type { Commit } from "../gate/commit.ts";
 import { HOUSEHOLD_LEDGER } from "../ledger/household.ts";
 import type { Payee } from "../ledger/payee.ts";
 import { compactIban } from "../provenance/iban.ts";
-import type { Origin, Statement, Trace } from "../provenance/trace.ts";
+import type { BillCheck, Origin, Statement, Trace } from "../provenance/trace.ts";
 import { ATTACKER_IBAN, INVOICE_AMOUNT, LUMEN_IBAN } from "../world/scenario.ts";
 import type { RuleId, Verdict } from "./verdict.ts";
 
@@ -37,6 +37,7 @@ function transfer(values: Trace[], overrides: Partial<Commit> = {}): Commit {
     flags: [],
     impostors: [],
     stated: [],
+    checked: [PORTAL_SHOWS],
     ...overrides,
   };
 }
@@ -45,6 +46,9 @@ const REAL_BILL_SAYS: Statement = { sourceId: "real-bill", via: "email", domain:
 const PORTAL_SAYS: Statement = { sourceId: "portal", via: "page", domain: "lumen-energy.es", amounts: [INVOICE_AMOUNT] };
 const CORRECTED_BILL_SAYS: Statement = { sourceId: "hijacked-invoice", via: "email", domain: "lumen-energy.es", amounts: [INVOICE_AMOUNT, "119.60"] };
 
+// note: what timo saw on lumen's own bill page; the default for every case
+const PORTAL_SHOWS: BillCheck = { payeeId: "lumen", url: "http://lumen-energy.es/portal", ok: true, amounts: [INVOICE_AMOUNT] };
+
 const LEGIT_VALUES = [
   iban(LUMEN_IBAN, fromLedger, fromPortal),
   amount(INVOICE_AMOUNT, fromPortal),
@@ -52,6 +56,23 @@ const LEGIT_VALUES = [
 ];
 
 export const RULE_CASES: RuleCase[] = [
+  {
+    name: "a corrected bill from the taken-over mailbox, the real one never opened",
+    commit: transfer([LEGIT_VALUES[0]!, amount("119.45", fromRealSender), beneficiary("Lumen Energy S.A.", fromLedger, fromRealSender)], { stated: [{ ...CORRECTED_BILL_SAYS, amounts: ["119.45"] }] }),
+    expected: "ask",
+    rule: "amount-unverified",
+  },
+  {
+    name: "lumen's bill page did not open",
+    commit: transfer(LEGIT_VALUES, { checked: [{ payeeId: "lumen", url: "http://lumen-energy.es/portal", ok: false, error: "timeout" }] }),
+    expected: "ask",
+    rule: "amount-unverified",
+  },
+  {
+    name: "the bill amount read on a clone, but lumen's own page shows the same",
+    commit: transfer([iban(LUMEN_IBAN, fromLedger), amount(INVOICE_AMOUNT, fromClone), beneficiary("Lumen Energy S.A.", fromLedger)]),
+    expected: "allow",
+  },
   {
     name: "a taken-over mailbox sends a corrected bill inside the usual range",
     commit: transfer([LEGIT_VALUES[0]!, amount("119.60", fromRealSender), LEGIT_VALUES[2]!], { stated: [CORRECTED_BILL_SAYS, REAL_BILL_SAYS, PORTAL_SAYS] }),
@@ -168,13 +189,14 @@ export const RULE_CASES: RuleCase[] = [
     name: "the payee's own site, compromised, shows ten times the bill, and only the reader sees the pressure",
     commit: transfer([LEGIT_VALUES[0]!, amount("842.00", fromPortal), LEGIT_VALUES[2]!], {
       flags: [{ sourceId: "portal", reason: "pressure", quote: "pay today to avoid disconnection" }],
+      checked: [{ ...PORTAL_SHOWS, amounts: ["842.00"] }],
     }),
     expected: "ask",
     rule: "reader-escalation",
   },
   {
     name: "the real portal itself shows an unusual total",
-    commit: transfer([LEGIT_VALUES[0]!, amount("842.00", fromPortal), LEGIT_VALUES[2]!]),
+    commit: transfer([LEGIT_VALUES[0]!, amount("842.00", fromPortal), LEGIT_VALUES[2]!], { checked: [{ ...PORTAL_SHOWS, amounts: ["842.00"] }] }),
     expected: "allow",
   },
   {

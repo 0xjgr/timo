@@ -16,6 +16,7 @@ const SWAP: Commit = {
   flags: [],
   impostors: [],
   stated: [],
+  checked: [],
 };
 
 async function writeThree(): Promise<string> {

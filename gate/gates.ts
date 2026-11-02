@@ -9,8 +9,9 @@ import type { Lens } from "../lens/lens.ts";
 import type { ReaderWatch } from "../reader/reader-watch.ts";
 import { recordPage, type SourceHook } from "../provenance/page-reader.ts";
 import type { SourceLog } from "../provenance/source-log.ts";
-import type { Trace } from "../provenance/trace.ts";
+import type { BillCheck, Trace } from "../provenance/trace.ts";
 import type { Commit } from "./commit.ts";
+import { checkBill } from "./check-bill.ts";
 import { readPendingForm, type FormField } from "./pending-form.ts";
 import { traceFields } from "./sensitive-fields.ts";
 import type { FollowUp, GuardianAnswer, VerdictLog } from "./verdict-log.ts";
@@ -48,6 +49,8 @@ export async function openGates(context: GateContext): Promise<Gates> {
   let held: { seq: number; fields: FormField[] } | undefined;
   const networkBlocks: Blocked[] = [];
   const inFlight = new Set<Promise<void>>();
+  // note: one look per payee and errand; the bill does not change while the agent works
+  const bills = new Map<string, Promise<BillCheck | undefined>>();
 
   const judge = async (commit: Commit, fields: FormField[]): Promise<{ verdict: Verdict; seq: number }> => {
     if (context.brands) {
@@ -59,6 +62,9 @@ export async function openGates(context: GateContext): Promise<Gates> {
       const sourceIds = new Set(commit.values.flatMap((trace) => trace.origins).flatMap((origin) => (origin.kind === "foreign" ? [origin.sourceId] : [])));
       commit.flags = context.reader.listFlags().filter((flag) => sourceIds.has(flag.sourceId));
     }
+    const paid = context.ledger.filter((payee) => commit.values.some((trace) => trace.kind === "iban" && trace.value === payee.iban));
+    for (const payee of paid) if (!bills.has(payee.id)) bills.set(payee.id, checkBill(page, payee));
+    commit.checked = (await Promise.all(paid.map((payee) => bills.get(payee.id)!))).filter((check) => check !== undefined);
     const verdict = judgeCommit(commit, context.ledger);
     const entry = await context.verdicts.append(commit, verdict, chooseFollowUp(verdict));
     console.log(`[gate] ${describeVerdict(verdict)} via=${commit.via} target=${commit.targetDomain} ${describeTraces(commit.values)}`);
@@ -86,6 +92,7 @@ export async function openGates(context: GateContext): Promise<Gates> {
       flags: [],
       impostors: [],
       stated: sources.listStatements(),
+      checked: [],
     };
     const { verdict, seq } = await judge(commit, form.fields);
     if (verdict.kind === "allow") {
@@ -123,6 +130,7 @@ export async function openGates(context: GateContext): Promise<Gates> {
       flags: [],
       impostors: [],
       stated: sources.listStatements(),
+      checked: [],
     };
     const { verdict, seq } = await judge(commit, fields);
     if (verdict.kind === "allow") return route.continue();

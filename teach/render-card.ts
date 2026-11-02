@@ -16,6 +16,7 @@ const LESSONS: Record<RuleId, (payee?: Payee) => string> = {
   "payee-new": () => "Before you pay someone for the first time, your family checks who they are.",
   "amount-unbacked": (payee) => `When a bill is much higher than usual, call ${payee ? `${payee.name} on ${payee.phone}` : "the company"} before paying.`,
   "amount-disputed": (payee) => `When a company sends two bills with different amounts, call ${payee ? `${payee.name} on ${payee.phone}` : "them"} and ask which one is real.`,
+  "amount-unverified": (payee) => `Check a bill on ${payee?.name ?? "the company"}'s own website or call ${payee ? payee.phone : "them"}, never only from an email.`,
   "value-untraced": () => "Timo only pays details that come from you, your records or the bill itself.",
   "secret-off-domain": () => "Your bank never asks for your password on another website.",
   "commit-outside-gate": () => "A real payment page waits for you to press Send. This one tried to pay by itself.",

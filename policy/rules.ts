@@ -90,6 +90,20 @@ export const RULES: Record<RuleId, Rule> = {
     );
   },
 
+  "amount-unverified": (commit, ledger) => {
+    // threat: the corrected bill again, read by an agent that never opened the real one, so no source disagrees.
+    // found by the adaptive attacker against 11ea52d
+    const payee = ledger.find((candidate) => listValues(commit, "iban").some((trace) => trace.value === candidate.iban));
+    if (!payee?.billUrl) return null;
+    const amount = listValues(commit, "amount").find((trace) => !trace.origins.some((origin) => origin.kind === "request"));
+    if (!amount) return null;
+    const check = commit.checked.find((candidate) => candidate.payeeId === payee.id);
+    if (!check) return ask("amount-unverified", `${amount.value} EUR to ${payee.name} was not checked on their own site`);
+    if (!check.ok) return ask("amount-unverified", `${amount.value} EUR to ${payee.name}: their bill page did not open (${check.error.slice(0, 80)})`);
+    if (check.amounts.includes(amount.value)) return null;
+    return ask("amount-unverified", `${amount.value} EUR to ${payee.name}, but their own bill page shows ${check.amounts.join(", ") || "no amount"} EUR`);
+  },
+
   "reader-escalation": (commit, ledger) => {
     // threat: a scam the rules have no shape for, caught only by what the source says.
     // note: only a value that nothing but flagged sources backs; the real bill amount repeated in a flagged mail stays allowed,

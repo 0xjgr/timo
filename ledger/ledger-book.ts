@@ -21,6 +21,7 @@ const PAYEE = z.object({
   phone: z.string().max(30),
   amountRange: z.object({ min: z.number().nonnegative(), max: z.number().positive() }),
   logoHash: z.string().regex(/^[0-9a-f]{16}$/).optional(),
+  billUrl: z.string().url().max(200).optional(),
 });
 
 const PHONE = /^\+?[0-9][0-9 ]{5,19}$/;

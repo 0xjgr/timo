@@ -22,6 +22,7 @@ const SCAMS: Record<RuleId, (payee?: string) => string> = {
   "payee-new": () => "an account you have never paid before",
   "amount-unbacked": (payee) => (payee ? `an amount much higher than your usual ${payee} bills` : "an amount much higher than your usual bills"),
   "amount-disputed": (payee) => `two messages from ${payee ?? "the company"} that ask for different amounts`,
+  "amount-unverified": (payee) => `a bill amount that ${payee ?? "the company"}'s own website does not show`,
   "value-untraced": () => "payment details that come from nowhere you or Timo can check",
   "secret-off-domain": () => "a site asking for your bank password that is not your bank",
   "commit-outside-gate": () => "a page that tried to send the payment by itself",
@@ -33,7 +34,7 @@ export function collectFacts(verdict: Exclude<Verdict, { kind: "allow" }>, commi
   const payee = findPayee(commit, ledger);
   const formIban = ibans.find((trace) => trace.value !== payee?.iban) ?? ibans[0];
   const amount = commit.values.find((trace) => trace.kind === "amount");
-  const culprit = verdict.rule === "amount-unbacked" || verdict.rule === "amount-disputed" ? amount : formIban;
+  const culprit = ["amount-unbacked", "amount-disputed", "amount-unverified"].includes(verdict.rule) ? amount : formIban;
   const origin = findForeign(culprit);
   const impostor = verdict.rule === "brand-impostor" ? commit.impostors[0] : undefined;
   return {

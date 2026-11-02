@@ -1,4 +1,4 @@
-import type { Statement, Trace } from "../provenance/trace.ts";
+import type { BillCheck, Statement, Trace } from "../provenance/trace.ts";
 import type { ReaderFlag } from "../reader/read-source.ts";
 
 export type Impostor = { sourceId: string; payeeId: string; domain: string };
@@ -17,4 +17,5 @@ export type Commit = {
   flags: ReaderFlag[];
   // note: the amounts each source the agent read states, not only the ones in this form
   stated: Statement[];
+  checked: BillCheck[];
 };

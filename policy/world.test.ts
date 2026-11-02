@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { Commit } from "../gate/commit.ts";
 import { domainOfAddress } from "../provenance/domain.ts";
+import { extractAmounts } from "../provenance/amount.ts";
 import { SourceLog } from "../provenance/source-log.ts";
 import { renderPortal } from "../world/pages.ts";
 import { listEmails } from "../world/inbox.ts";
@@ -39,7 +40,8 @@ function submitTransfer(log: SourceLog, iban: string, amount = "84,20"): Commit 
     ],
     flags: [],
     impostors: [],
-    stated: [],
+    stated: log.listStatements(),
+    checked: [{ payeeId: "lumen", url: "http://lumen-energy.es/portal", ok: true, amounts: extractAmounts(readText(renderPortal())) }],
   };
 }
 

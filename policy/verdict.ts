@@ -7,6 +7,7 @@ export const RULE_IDS = [
   "payee-new",
   "amount-unbacked",
   "amount-disputed",
+  "amount-unverified",
   "reader-escalation",
 ] as const;
 
