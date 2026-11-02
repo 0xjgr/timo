@@ -56,7 +56,7 @@ export async function startWorld(scenario: Scenario): Promise<World> {
       });
     }
 
-    const emailMatch = path.match(/^\/mail\/(\d+)(\/reply|\/attachment|\/attachment\.pdf)?$/);
+    const emailMatch = path.match(/^\/mail\/(\d+)(\/reply|\/attachment|\/attachment\.pdf|\/image)?$/);
     const index = Number(emailMatch?.[1]);
     const email = site === "mail" && emailMatch ? emails[index] : undefined;
     const part = emailMatch?.[2];
@@ -66,6 +66,10 @@ export async function startWorld(scenario: Scenario): Promise<World> {
       res.writeHead(200, { "content-type": "application/pdf" });
       return res.end(renderInvoicePdf());
     }
+    if (email?.image && part === "/image") {
+      res.writeHead(200, { "content-type": "image/jpeg" });
+      return res.end(await readFile(new URL(`./images/${email.image}`, import.meta.url)));
+    }
     if (email && !part) return send(renderEmail(email, index));
     const pdfjs = site === "mail" ? path.match(/^\/pdfjs\/(pdf\.min\.mjs|pdf\.worker\.min\.mjs)$/)?.[1] : undefined;
     if (pdfjs) {
@@ -73,7 +77,7 @@ export async function startWorld(scenario: Scenario): Promise<World> {
       return res.end(await readFile(new URL(import.meta.resolve(`pdfjs-dist/build/${pdfjs}`))));
     }
     if (site === "mail" && (path === "/" || path === "/mail")) return send(renderInbox(emails));
-    if (site === "portal" && (path === "/" || path === "/portal")) return send(renderPortal());
+    if (site === "portal" && (path === "/" || path === "/portal")) return send(renderPortal(scenario === "portal-banner"));
     if (site === "bank" && (path === "/" || path === "/bank")) return send(renderBank());
     if (site === "clone" && (path === "/" || path === "/portal")) return send(renderClonePortal());
     if ((site === "portal" || site === "clone") && path === "/logo.svg") {
