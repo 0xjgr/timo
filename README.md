@@ -27,7 +27,7 @@ The same words are used in the code, the UI and the video.
 | second reader | an open-weights model that reads each source and may only escalate |
 | lens | the view that colors each value by its origin |
 | teach card | one screen for the user after a block: the scam that was avoided |
-| driver | `screen` (computer use on screenshots) or `dom` (tools over the page) |
+| driver | the computer-use loop: the model sees screenshots and clicks and types |
 
 ## Why
 An agent that pays bills reads untrusted mail and pages on the way. In our first test,
