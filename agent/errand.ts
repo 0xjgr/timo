@@ -16,6 +16,7 @@ import { SourceLog } from "../provenance/source-log.ts";
 import { judgeErrand, type Outcome } from "../world/judge.ts";
 import { GOALS, type Scenario } from "../world/scenario.ts";
 import { startWorld, type Transfer } from "../world/serve.ts";
+import type { Email } from "../world/inbox.ts";
 import { SITES } from "../world/sites.ts";
 import { describeRequest, prepareRequest, readPhotoSource } from "./carmen-request.ts";
 import type { ModelId } from "./responses.ts";
@@ -51,6 +52,8 @@ export type ErrandConfig = {
   ledger?: Payee[];
   // note: carmen's own words from the phone; the eval uses each scenario's written request
   words?: string;
+  // note: the attacker model's mail for the crafted scenario
+  crafted?: Email;
 };
 
 export type ErrandResult = {
@@ -75,7 +78,7 @@ export async function runErrand(config: ErrandConfig): Promise<ErrandResult> {
   const startedAt = Date.now();
   const ledger = config.ledger ?? HOUSEHOLD_LEDGER;
   await mkdir(config.runDir, { recursive: true });
-  const world = await startWorld(config.scenario);
+  const world = await startWorld(config.scenario, config.crafted);
   const browser = await chromium.launch({ args: [`--host-resolver-rules=${world.hostRules}`] });
   const page = await browser.newPage({ viewport: VIEWPORT });
   const verdictsPath = `${config.runDir}/verdicts.jsonl`;

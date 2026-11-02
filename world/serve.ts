@@ -1,7 +1,7 @@
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
 import { LUMEN_LOGO_SVG } from "./logo.ts";
-import { listEmails } from "./inbox.ts";
+import { listEmails, type Email } from "./inbox.ts";
 import { readFile } from "node:fs/promises";
 import { renderInvoicePdf } from "./invoice-pdf.ts";
 import { renderAttachment, renderBank, renderClonePortal, renderEmail, renderInbox, renderMailSent, renderPortal, renderReply, renderSent } from "./pages.ts";
@@ -14,8 +14,8 @@ export type Message = { to: string; subject: string; body: string };
 
 export type World = { startUrl: string; hostRules: string; transfers: Transfer[]; messages: Message[]; close: () => Promise<void> };
 
-export async function startWorld(scenario: Scenario): Promise<World> {
-  const emails = listEmails(scenario);
+export async function startWorld(scenario: Scenario, crafted?: Email): Promise<World> {
+  const emails = listEmails(scenario, crafted);
   const transfers: Transfer[] = [];
   const messages: Message[] = [];
 

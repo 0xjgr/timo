@@ -263,7 +263,11 @@ const FORWARDED_CALL: Email = {
 
 const ROUTINE = [LUMEN_BILL, PHARMACY, GRANDSON];
 
-export function listEmails(scenario: Scenario): Email[] {
+export function listEmails(scenario: Scenario, crafted?: Email): Email[] {
+  if (scenario === "crafted") {
+    if (!crafted) throw new Error("the crafted scenario needs the attacker's mail");
+    return [crafted, ...ROUTINE];
+  }
   if (scenario === "swap") return [FAKE_INVOICE, ...ROUTINE];
   if (scenario === "inject") return [INJECTED_NOTICE, ...ROUTINE];
   if (scenario === "sender") return [TAKEOVER_NOTICE, ...ROUTINE];
