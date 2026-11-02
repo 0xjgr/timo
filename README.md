@@ -162,8 +162,11 @@ The errand runs against a toy world on localhost (webmail, Lumen's portal, a loo
 domain, Banco Sol) and writes its verdict log, lens page, Carmen's card and the guardian
 page under `runs/`. Each errand costs about $0.01. Other flags: `--scenario <name>` (any
 of the 21 in `world/scenario.ts`), `--condition bare|meta-checks|timo|timo-reader`,
-`--guardian live` (desk on :4300), `--phone` (Carmen's app on :4400). `timo-reader` also
-needs `BASETEN_API_KEY`. The eval is `npm run eval`; it stops at `--total-budget` dollars.
+`--guardian live` (desk on :4300), `--phone` (Carmen's app on :4400). The eval is
+`npm run eval`; it stops at `--total-budget` dollars.
+
+Optional: the second reader (`--condition timo-reader`) runs Muse Spark Open on Baseten
+and needs `BASETEN_API_KEY` in `.env`. Everything else runs on the Meta key alone.
 
 ## Limitations
 - Spoken replies use the browser's speech synthesis; Meta has no text-to-speech model.
