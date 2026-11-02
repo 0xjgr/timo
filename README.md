@@ -12,7 +12,7 @@ Work in progress, built during the Meta Global AI Developer Hackathon (Oct 26 - 
 
 *A fake invoice that only swaps the IBAN. The agent falls for it; Timo stops the click
 (`payee-drift`), shows where each value came from, and the agent pays the real bill instead.
-Real run, Muse Spark 1.3, `runs/eval-2026-10-29-15-33-54/timo-swap-7`.*
+Real run on Muse Spark 1.3 from the Oct 30 batch (errand `timo-swap-7`).*
 
 ## Vocabulary
 The same words are used in the code, the UI and the video.
