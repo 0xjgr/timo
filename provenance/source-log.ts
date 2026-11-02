@@ -2,7 +2,7 @@ import type { Payee } from "../ledger/payee.ts";
 import { extractAmounts, normalizeAmount } from "./amount.ts";
 import { compactIban, extractIbans } from "./iban.ts";
 import { normalizeName, normalizeText } from "./name.ts";
-import type { Origin, SourceVia, Trace, ValueKind } from "./trace.ts";
+import type { Origin, SourceVia, Statement, Trace, ValueKind } from "./trace.ts";
 
 export type Source = { id: string; via: SourceVia; domain: string; text: string };
 
@@ -25,6 +25,12 @@ export class SourceLog {
 
   listSources(): Source[] {
     return [...this.#sources.values()].map((entry) => entry.source);
+  }
+
+  listStatements(): Statement[] {
+    return [...this.#sources.values()]
+      .filter(({ index }) => index.amounts.size > 0)
+      .map(({ source, index }) => ({ sourceId: source.id, via: source.via, domain: source.domain, amounts: [...index.amounts] }));
   }
 
   traceValue(kind: ValueKind, raw: string): Trace {

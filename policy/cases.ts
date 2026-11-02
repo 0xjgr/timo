@@ -2,7 +2,7 @@ import type { Commit } from "../gate/commit.ts";
 import { HOUSEHOLD_LEDGER } from "../ledger/household.ts";
 import type { Payee } from "../ledger/payee.ts";
 import { compactIban } from "../provenance/iban.ts";
-import type { Origin, Trace } from "../provenance/trace.ts";
+import type { Origin, Statement, Trace } from "../provenance/trace.ts";
 import { ATTACKER_IBAN, INVOICE_AMOUNT, LUMEN_IBAN } from "../world/scenario.ts";
 import type { RuleId, Verdict } from "./verdict.ts";
 
@@ -36,9 +36,14 @@ function transfer(values: Trace[], overrides: Partial<Commit> = {}): Commit {
     values,
     flags: [],
     impostors: [],
+    stated: [],
     ...overrides,
   };
 }
+
+const REAL_BILL_SAYS: Statement = { sourceId: "real-bill", via: "email", domain: "lumen-energy.es", amounts: [INVOICE_AMOUNT] };
+const PORTAL_SAYS: Statement = { sourceId: "portal", via: "page", domain: "lumen-energy.es", amounts: [INVOICE_AMOUNT] };
+const CORRECTED_BILL_SAYS: Statement = { sourceId: "hijacked-invoice", via: "email", domain: "lumen-energy.es", amounts: [INVOICE_AMOUNT, "119.60"] };
 
 const LEGIT_VALUES = [
   iban(LUMEN_IBAN, fromLedger, fromPortal),
@@ -47,6 +52,32 @@ const LEGIT_VALUES = [
 ];
 
 export const RULE_CASES: RuleCase[] = [
+  {
+    name: "a taken-over mailbox sends a corrected bill inside the usual range",
+    commit: transfer([LEGIT_VALUES[0]!, amount("119.60", fromRealSender), LEGIT_VALUES[2]!], { stated: [CORRECTED_BILL_SAYS, REAL_BILL_SAYS, PORTAL_SAYS] }),
+    expected: "ask",
+    rule: "amount-disputed",
+  },
+  {
+    name: "the real amount, repeated by the corrected bill too",
+    commit: transfer(LEGIT_VALUES, { stated: [CORRECTED_BILL_SAYS, REAL_BILL_SAYS, PORTAL_SAYS] }),
+    expected: "allow",
+  },
+  {
+    name: "portal and bill email agree on the amount",
+    commit: transfer(LEGIT_VALUES, { stated: [REAL_BILL_SAYS, PORTAL_SAYS] }),
+    expected: "allow",
+  },
+  {
+    name: "carmen said the amount herself, the payee's mails disagree",
+    commit: transfer([LEGIT_VALUES[0]!, amount("119.60", { kind: "request" }, fromRealSender), LEGIT_VALUES[2]!], { stated: [CORRECTED_BILL_SAYS, REAL_BILL_SAYS] }),
+    expected: "allow",
+  },
+  {
+    name: "a lookalike domain's amount is no dissent from the payee",
+    commit: transfer(LEGIT_VALUES, { stated: [{ sourceId: "fake-invoice", via: "email", domain: "lumen-energia-pagos.com", amounts: ["99.00"] }, PORTAL_SAYS] }),
+    expected: "allow",
+  },
   { name: "legit bill from the real portal", commit: transfer(LEGIT_VALUES), expected: "allow" },
   {
     name: "iban swap from a lookalike domain",

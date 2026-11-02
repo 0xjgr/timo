@@ -39,6 +39,7 @@ function submitTransfer(log: SourceLog, iban: string, amount = "84,20"): Commit 
     ],
     flags: [],
     impostors: [],
+    stated: [],
   };
 }
 

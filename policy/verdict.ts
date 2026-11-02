@@ -6,6 +6,7 @@ export const RULE_IDS = [
   "commit-outside-gate",
   "payee-new",
   "amount-unbacked",
+  "amount-disputed",
   "reader-escalation",
 ] as const;
 

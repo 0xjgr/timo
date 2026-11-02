@@ -85,6 +85,7 @@ export async function openGates(context: GateContext): Promise<Gates> {
       values,
       flags: [],
       impostors: [],
+      stated: sources.listStatements(),
     };
     const { verdict, seq } = await judge(commit, form.fields);
     if (verdict.kind === "allow") {
@@ -121,6 +122,7 @@ export async function openGates(context: GateContext): Promise<Gates> {
       values,
       flags: [],
       impostors: [],
+      stated: sources.listStatements(),
     };
     const { verdict, seq } = await judge(commit, fields);
     if (verdict.kind === "allow") return route.continue();

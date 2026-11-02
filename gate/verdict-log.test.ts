@@ -15,6 +15,7 @@ const SWAP: Commit = {
   values: [{ kind: "iban", value: "ES6000491500051234567892", origins: [{ kind: "foreign", sourceId: "mail-0", via: "email", domain: "lumen-energia-pagos.com" }] }],
   flags: [],
   impostors: [],
+  stated: [],
 };
 
 async function writeThree(): Promise<string> {

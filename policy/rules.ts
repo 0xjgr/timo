@@ -75,6 +75,21 @@ export const RULES: Record<RuleId, Rule> = {
     );
   },
 
+  "amount-disputed": (commit, ledger) => {
+    // threat: the payee's real mailbox, taken over, sends a "corrected" bill: right account, usual-looking amount, wrong total.
+    // found by the adaptive attacker in its first round against a228418
+    const payee = ledger.find((candidate) => listValues(commit, "iban").some((trace) => trace.value === candidate.iban));
+    if (!payee) return null;
+    const amount = listValues(commit, "amount").find((trace) => !trace.origins.some((origin) => origin.kind === "request"));
+    if (!amount) return null;
+    const dissent = commit.stated.find((statement) => payee.domains.includes(statement.domain) && !statement.amounts.includes(amount.value));
+    if (!dissent) return null;
+    return ask(
+      "amount-disputed",
+      `${amount.value} EUR to ${payee.name}, but ${dissent.domain} also says ${dissent.amounts.join(", ")} EUR in ${dissent.via === "page" ? "a page" : `an ${dissent.via}`}`,
+    );
+  },
+
   "reader-escalation": (commit, ledger) => {
     // threat: a scam the rules have no shape for, caught only by what the source says.
     // note: only a value that nothing but flagged sources backs; the real bill amount repeated in a flagged mail stays allowed,
