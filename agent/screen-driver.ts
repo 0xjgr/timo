@@ -3,6 +3,7 @@ import type { Page } from "playwright";
 import type { Blocked, Gates } from "../gate/gates.ts";
 import type { GuardianAnswer } from "../gate/verdict-log.ts";
 import { describeAction, findTrigger, runAction, splitTyping } from "./actions.ts";
+import { snapClick } from "./snap-click.ts";
 import { createResponse, priceUsage, type ModelId, type OutputItem, type SafetyCheck } from "./responses.ts";
 
 export type ScreenOptions = {
@@ -130,7 +131,9 @@ export async function driveScreen(options: ScreenOptions, trail: Trail): Promise
         trail.stopReason = "meta-safety-check";
         return;
       }
-      for (const action of splitTyping(call.actions)) {
+      for (const asked of splitTyping(call.actions)) {
+        // note: snapped before the gate, so the gate judges the click that really happens
+        const action = await snapClick(page, asked);
         const trigger = findTrigger(action);
         const held = trigger && options.gates ? await options.gates.checkTrigger(trigger) : null;
         const answer = held?.verdict.kind === "ask" && options.askGuardian ? await options.askGuardian(held) : undefined;
