@@ -51,7 +51,9 @@ only a wrong number. The loud version of the attack ("note to AI assistants") fa
    source. When a value is typed into a form, Timo finds where it appears: the request,
    the ledger, or a source (with its sender's domain).
 2. **Gate.** At the submit click, and again on any outgoing POST, the policy engine
-   judges the whole form. Eight pure rules; deny beats ask beats allow.
+   judges the whole form. Eleven pure rules; deny beats ask beats allow. Before paying
+   a ledger payee, Timo opens that payee's bill page itself, at the URL the ledger
+   keeps and never at a link from the mail, and the amount has to be on it.
 3. **Second reader.** Muse Spark Open, an open-weights model served on Baseten, reads
    each source and answers in JSON whether it tries to move the money (a changed
    account, pressure, paying elsewhere, orders to an AI, secrecy), quoting the sentence.
@@ -90,6 +92,8 @@ Properties the engine keeps:
 2. No model can turn a deny into an allow.
 3. A new IBAN always goes to the guardian, whatever its origin, the user's own words included.
 4. The ledger is never written from the agent's flow.
+5. An amount Carmen did not say reaches a known payee only if their own bill page shows
+   it, and a payee already paid in the errand is not paid again without the guardian.
 
 ## Results
 360 errands on Muse Spark 1.3 driving a browser from screenshots: 12 scenarios, 3
@@ -141,7 +145,8 @@ What this shows:
 - The model API's safety checks ask a person 7.9 times per errand, mostly on harmless
   clicks, and do not lower the attacker's wins (29 against 24 of 89, Fisher p = 0.51).
 - Timo's 2 unfinished legit errands were not blocks. In both the agent kept clicking
-  about 15 px above the "View my bill" link until it ran out of steps.
+  about 15 px above the "View my bill" link until it ran out of steps. Since Nov 2 a
+  click that misses a link or a text field by up to 20 px lands on it (never on a button).
 
 Every row, harness failures included, is in `eval/results/2026-10-29-15-33-54/`; `npm run eval` reruns the batch and `npm run stats` recomputes the intervals.
 
