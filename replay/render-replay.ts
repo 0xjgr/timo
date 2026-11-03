@@ -17,8 +17,8 @@ a { color: inherit; } .dim { color: var(--dim); }
 .head { display: flex; gap: 16px; align-items: center; margin-bottom: 18px; }
 .head img { width: 72px; height: 72px; border-radius: 22%; }
 .facts { font-size: 13px; color: var(--dim); display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 8px 0 0; }
-.allow, .paid-payee, .replied { color: var(--ok); } .ask { color: var(--ask); }
-.deny, .paid-attacker, .wrong-amount, .paid-other { color: var(--deny); }
+.allow, .approved, .paid-payee, .replied { color: var(--ok); } .ask { color: var(--ask); }
+.deny, .refused, .paid-attacker, .wrong-amount, .paid-other { color: var(--deny); }
 table { border-collapse: collapse; width: 100%; font-size: 13px; }
 td, th { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
 th { color: var(--dim); font-weight: normal; font-family: inherit; }

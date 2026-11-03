@@ -25,7 +25,10 @@ type Summary = {
   scenario: string; condition: string; model: string; outcome: string; spentUsd: number; turns: number; ms: number;
   transfers: { iban: string; amount: string }[];
 };
-type Entry = { seq: number; at: string; rulesCommit: string; verdict: { kind: string; rule?: string; reason?: string } };
+type Entry = { seq: number; at: string; rulesCommit?: string } & (
+  | { verdict: { kind: string; rule?: string; reason?: string } }
+  | { decision: { isApproved: boolean; by: string; forSeq: number } }
+);
 
 // note: these files are written by our own harness in agent/run.ts, so they are read as typed, not parsed
 export async function readRun(dir: string): Promise<ReplayRun> {
@@ -53,7 +56,7 @@ export async function readRun(dir: string): Promise<ReplayRun> {
 
   const verdicts = await Promise.all(entries.map(async (entry) => ({
     seq: entry.seq,
-    ...entry.verdict,
+    ...("verdict" in entry ? entry.verdict : readDecision(entry.decision)),
     hasLens: await isFile(`${dir}/lens/verdict-${entry.seq}.html`),
     hasCard: await isFile(`${dir}/teach/card-${entry.seq}.html`),
   })));
@@ -63,7 +66,7 @@ export async function readRun(dir: string): Promise<ReplayRun> {
     condition: summary.condition,
     model: summary.model,
     outcome: summary.outcome,
-    rulesCommit: entries[0]?.rulesCommit ?? "",
+    rulesCommit: entries.find((entry) => entry.rulesCommit)?.rulesCommit ?? "",
     spentUsd: summary.spentUsd,
     turns: summary.turns,
     seconds: Math.round(summary.ms / 1000),
@@ -71,6 +74,15 @@ export async function readRun(dir: string): Promise<ReplayRun> {
     steps,
     verdicts,
     hasGuardian: await isFile(`${dir}/guardian.html`),
+  };
+}
+
+// note: the guardian's answer is chained in the same log; "stand-in" is the scripted guardian of a recorded run
+function readDecision(decision: { isApproved: boolean; by: string; forSeq: number }) {
+  return {
+    kind: decision.isApproved ? "approved" : "refused",
+    rule: `guardian (${decision.by})`,
+    reason: `${decision.isApproved ? "approved" : "refused"} the question in #${decision.forSeq}`,
   };
 }
 
