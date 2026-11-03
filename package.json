@@ -15,7 +15,8 @@
     "capture-logo": "node --env-file=.env ledger/capture-logo.ts",
     "teach": "node --env-file=.env teach/run.ts",
     "guardian": "node guardian/run.ts",
-    "stats": "node eval/stats.ts"
+    "stats": "node eval/stats.ts",
+    "replay": "node replay/build-replay.ts"
   },
   "devDependencies": {
     "@types/node": "26.6.5",
