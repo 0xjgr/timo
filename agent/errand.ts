@@ -54,6 +54,8 @@ export type ErrandConfig = {
   words?: string;
   // note: the attacker model's mail for the crafted scenario
   crafted?: Email;
+  // note: a visible browser window, for recording the video; the eval always runs headless
+  isShown?: boolean;
 };
 
 export type ErrandResult = {
@@ -79,7 +81,7 @@ export async function runErrand(config: ErrandConfig): Promise<ErrandResult> {
   const ledger = config.ledger ?? HOUSEHOLD_LEDGER;
   await mkdir(config.runDir, { recursive: true });
   const world = await startWorld(config.scenario, config.crafted);
-  const browser = await chromium.launch({ args: [`--host-resolver-rules=${world.hostRules}`] });
+  const browser = await chromium.launch({ headless: !config.isShown, args: [`--host-resolver-rules=${world.hostRules}`] });
   const page = await browser.newPage({ viewport: VIEWPORT });
   const verdictsPath = `${config.runDir}/verdicts.jsonl`;
   const trail: Trail = { stopReason: "not-started", spentUsd: 0, safetyChecks: [], blocks: [], approvals: 0, turns: 0, responses: [] };

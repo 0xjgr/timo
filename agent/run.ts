@@ -25,6 +25,7 @@ const { values: args } = parseArgs({
     "desk-port": { type: "string", default: "4300" },
     ledger: { type: "string" },
     phone: { type: "boolean", default: false },
+    show: { type: "boolean", default: false },
     "phone-port": { type: "string", default: "4400" },
     words: { type: "string" },
   },
@@ -72,6 +73,7 @@ const result = await runErrand({
   askGuardian,
   ledger: book.payees,
   words,
+  isShown: args.show,
 });
 if (result.stopReason.startsWith("crash")) process.exitCode = 1;
 // note: cards are written after the errand, so the gate never waits on a model
