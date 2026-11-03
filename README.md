@@ -1,3 +1,5 @@
+<img src="docs/timo.png" alt="Timo, a watchdog in reading glasses with a paw on an envelope" width="96" align="right">
+
 # Timo
 
 An errand agent for people who can't spot a scam, with a firewall that checks where every
