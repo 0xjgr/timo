@@ -1,3 +1,8 @@
+import { readFileSync } from "node:fs";
+
+// note: drawn by muse image, see carmen/draw-timo.ts; inlined so the csp needs no image route
+const FACE = `data:image/png;base64,${readFileSync(new URL("./timo.png", import.meta.url)).toString("base64")}`;
+
 const STYLE = `
 :root { --bg: #f7f5f0; --card: #ffffff; --text: #1c1c1a; --dim: #5e5d58; --line: #dedbd2;
   --accent: #1e6b3c; --accent-soft: #e6f2ea; --stop: #b3261e; --stop-soft: #fbeae8; --wait: #8a5a00; --wait-soft: #fbf1dc; }
@@ -7,7 +12,10 @@ const STYLE = `
 html, body { height: 100%; }
 body { margin: 0; background: var(--bg); color: var(--text); font: 22px/1.45 "DejaVu Sans", system-ui, sans-serif; }
 main { max-width: 480px; min-height: 100%; margin: 0 auto; padding: 24px 16px 32px; display: flex; flex-direction: column; }
-.brand { font-weight: bold; letter-spacing: .05em; color: var(--dim); font-size: 16px; }
+.brand { font-weight: bold; letter-spacing: .05em; color: var(--dim); font-size: 16px; display: flex; align-items: center; gap: 10px; }
+.face { display: block; border-radius: 22%; }
+.brand .face { width: 44px; height: 44px; }
+.stage > .face { align-self: center; width: 150px; height: 150px; animation: breathe 1.6s ease-in-out infinite; }
 .stage { flex: 1; display: none; flex-direction: column; justify-content: center; gap: 20px; }
 .stage.on { display: flex; }
 h1 { font-size: 32px; line-height: 1.2; margin: 0; }
@@ -27,7 +35,6 @@ p { margin: 0; }
 .typed textarea { font: inherit; padding: 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--text); min-height: 4.5em; }
 .typed button { background: transparent; color: var(--text); border: 2px solid var(--line); }
 details summary { color: var(--dim); font-size: 18px; cursor: pointer; text-align: center; }
-.pulse { width: 18px; height: 18px; border-radius: 50%; background: var(--accent); animation: breathe 1.2s ease-in-out infinite; }
 .verdict { border-radius: 12px; padding: 20px; }
 .verdict.ok { background: var(--accent-soft); } .verdict.ok h1 { color: var(--accent); }
 .verdict.stop { background: var(--stop-soft); } .verdict.stop h1 { color: var(--stop); }
@@ -146,7 +153,7 @@ export function renderPhone(nonce: string): string {
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Timo</title><style>${STYLE}</style></head>
 <body><main>
-<div class="brand">TIMO</div>
+<div class="brand"><img class="face" src="${FACE}" alt="">TIMO</div>
 <section class="stage on" id="listen">
   <h1>What should Timo do?</h1>
   <button class="talk" id="talk">Tap and tell Timo</button>
@@ -162,7 +169,7 @@ export function renderPhone(nonce: string): string {
   <div class="pair"><button class="yes" id="yes">Yes, do it</button><button class="no" id="no">No, say it again</button></div>
 </section>
 <section class="stage" id="working">
-  <div class="pulse"></div>
+  <img class="face" src="${FACE}" alt="">
   <h1>Timo is on it</h1>
   <p class="words said-words"></p>
   <p class="dim">Timo checks every account and amount before paying. You can put the phone down.</p>
