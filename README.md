@@ -108,6 +108,9 @@ All headline numbers are on the final rules (`37d538c`), Muse Spark 1.3 driving 
 from screenshots. 210 errands on Nov 3: 21 scenarios (3 legit, 9 dev attacks, 9 held-out
 attacks), with and without Timo, 5 runs each, $1.01 in total. 209 were scored; 1 crashed in
 the harness and is left out. Rows: `eval/results/2026-11-03-21-36-45/`.
+After this batch the final review changed two things in the gate, not in the rules (`8a90a29`):
+a bill page that failed to open is checked again on the next payment, and a mail that quotes
+an IBAN no longer counts as a payment for `payee-repeat`.
 
 | Condition | Attacker paid | Right outcome under attack | Legit errands done | Legit errands blocked | Human prompts per errand | USD per errand |
 |---|---|---|---|---|---|---|
@@ -315,4 +318,10 @@ and needs `BASETEN_API_KEY` in `.env`. Everything else runs on the Meta key alon
   Wonder call that failed after retries.
 
 ## AI tools used
-Listed at submission.
+- Inside the product: Muse Spark 1.3, Muse Wonder, Muse Spark Open, Muse Voice Transcribe,
+  SAM 3.1 and Muse Image, as described above.
+- Claude Code (Anthropic) helped write and review code, tests and docs. The threat model,
+  the design decisions and every number were checked by the author against the eval rows.
+- Demo video: the phone's spoken replies were re-voiced with Kokoro (open weights, Apache 2.0), because the browser's
+  speech synthesis did not record on the recording machine (noted on screen). Music
+  synthesized with code; interface sounds by Kenney (CC0). The narration is the author's voice.
