@@ -10,6 +10,8 @@ import type { LedgerBook } from "../ledger/ledger-book.ts";
 import { buildAskView, type AskView } from "./ask-view.ts";
 import { renderDesk } from "./render-desk.ts";
 import { renderWatch } from "./render-watch.ts";
+import { traceRows } from "./watch-trace.ts";
+import { collectFacts, type VerdictFacts } from "../teach/verdict-facts.ts";
 
 export type Desk = { url: string; watchUrl: string; ask: (block: Blocked) => Promise<GuardianAnswer>; close: () => Promise<void> };
 
@@ -48,6 +50,8 @@ export async function openDesk(options: DeskOptions): Promise<Desk> {
       rule: entry.verdict.kind === "allow" ? null : entry.verdict.rule,
       reason: entry.verdict.kind === "allow" ? null : entry.verdict.reason.slice(0, 240),
       target: entry.commit.targetDomain,
+      trace: traceRows(entry.commit, book.payees.flatMap((payee) => payee.domains)),
+      ...(entry.verdict.kind === "allow" ? {} : pickFacts(collectFacts(entry.verdict, entry.commit, book.payees))),
       answer: answers.get(entry.seq) ?? null,
     }));
     return { pending: [...pending.values()].map((ask) => ask.view), chain: { ok: true, head: checked.value.at(-1)?.hash.slice(0, 12) ?? "empty" }, log, ledger };
@@ -66,7 +70,7 @@ export async function openDesk(options: DeskOptions): Promise<Desk> {
       const nonce = randomBytes(12).toString("base64");
       res.writeHead(200, {
         "content-type": "text/html; charset=utf-8",
-        "content-security-policy": `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-src 'self'; frame-ancestors 'none'`,
+        "content-security-policy": `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'unsafe-inline'; img-src 'self' data:; font-src data:; connect-src 'self'; frame-src 'self'; frame-ancestors 'none'`,
         "cache-control": "no-store",
       });
       return void res.end(path === "/watch" ? renderWatch(nonce) : renderDesk(nonce));
@@ -137,6 +141,10 @@ export async function openDesk(options: DeskOptions): Promise<Desk> {
     });
 
   return { url, watchUrl: `${origin}/watch#t=${token}`, ask, close };
+}
+
+function pickFacts(facts: VerdictFacts) {
+  return { scam: facts.scam, knownAccountEnd: facts.knownAccountEnd, payeeName: facts.payeeName };
 }
 
 function readCandidate(block: Blocked) {
