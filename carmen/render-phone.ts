@@ -43,6 +43,20 @@ details summary { color: var(--dim); font-size: 18px; cursor: pointer; text-alig
 .asking h1 { color: var(--wait); }
 iframe { width: 100%; height: 70vh; border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
 .error { color: var(--stop); font-size: 18px; min-height: 1.4em; text-align: center; }
+.aside { display: none; }
+/* note: on a wide screen (the demo, a laptop) the same app sits in a phone frame with who-is-who beside it */
+@media (min-width: 1000px) and (min-height: 700px) {
+  html, body { overflow: hidden; }
+  body { background: #e9e6de; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; }
+  .aside { display: block; grid-column: 1; justify-self: end; max-width: 460px; padding: 0 56px; }
+  .aside .role { font-size: 15px; color: var(--accent); font-weight: bold; text-transform: uppercase; letter-spacing: .08em; }
+  .aside h1 { font-size: 36px; margin: 8px 0 14px; }
+  .aside p { color: var(--dim); font-size: 19px; margin: 0 0 12px; }
+  main { grid-column: 2; width: 400px; height: min(860px, calc(100vh - 32px)); min-height: 0; overflow-y: auto; scrollbar-width: none;
+    border: 10px solid var(--frame, #000); border-radius: 46px; box-shadow: 0 30px 70px rgba(0,0,0,.35); background: var(--bg); }
+  iframe { height: 46vh; }
+}
+@media (min-width: 1000px) and (min-height: 700px) and (prefers-color-scheme: dark) { body { background: #0e0e0d; --frame: #3a3a36; } }
 `;
 
 // note: the page records raw pcm and writes the wav itself, because the transcribe endpoint
@@ -152,7 +166,11 @@ export function renderPhone(nonce: string): string {
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Timo</title><style>${STYLE}</style></head>
-<body><main>
+<body>
+<div class="aside"><div class="role">The older user</div><h1>Carmen, 74</h1>
+<p>One button on her phone. She says what she needs; Timo does the errand and tells her what happened.</p>
+<p>She never sees an IBAN.</p></div>
+<main>
 <div class="brand"><img class="face" src="${FACE}" alt="">TIMO</div>
 <section class="stage on" id="listen">
   <h1>What should Timo do?</h1>
