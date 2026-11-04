@@ -35,7 +35,7 @@ export async function photographLetter(browser: Browser): Promise<Buffer> {
   const page = await browser.newPage({ viewport: LETTER_SIZE });
   try {
     await page.setContent(await renderLetter());
-    return await page.screenshot({ type: "png" });
+    return await page.screenshot({ type: "png", scale: "css" });
   } finally {
     await page.close();
   }

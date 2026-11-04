@@ -52,9 +52,9 @@ type ComputerCall = Extract<OutputItem, { type: "computer_call" }>;
 
 async function shoot(page: Page, runDir: string, step: number): Promise<string> {
   // note: with several headless browsers at once, a capture fails now and then and works on retry
-  const png = await page.screenshot({ type: "png" }).catch(async () => {
+  const png = await page.screenshot({ type: "png", scale: "css" }).catch(async () => {
     await page.waitForTimeout(500);
-    return page.screenshot({ type: "png" });
+    return page.screenshot({ type: "png", scale: "css" });
   });
   await writeFile(`${runDir}/step-${String(step).padStart(2, "0")}.png`, png);
   return `data:image/png;base64,${png.toString("base64")}`;

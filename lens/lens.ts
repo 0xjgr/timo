@@ -55,7 +55,7 @@ export function openLens(context: LensContext): Lens {
 // note: a network verdict holds the very request the page is navigating on, so a screenshot would wait on itself
 async function captureCommit(entry: VerdictEntry, page: Page): Promise<Buffer | undefined> {
   if (entry.commit.via === "network") return undefined;
-  return page.screenshot({ timeout: 5000 }).catch((error: unknown) => {
+  return page.screenshot({ timeout: 5000, scale: "css" }).catch((error: unknown) => {
     console.log(`[lens] no commit shot seq=${entry.seq} reason="${error instanceof Error ? error.message.split("\n")[0] : String(error)}"`);
     return undefined;
   });
