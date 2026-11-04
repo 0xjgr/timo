@@ -8,13 +8,18 @@ payment detail came from before money moves.
 In Spanish, *timo* means a scam. It is also the thymus, the organ that teaches immune
 cells to tell self from foreign. Timo does the same with the values an agent types.
 
-Work in progress, built during the Meta Global AI Developer Hackathon (Oct 26 - Nov 4, 2026).
+Built during the Meta Global AI Developer Hackathon (Oct 26 - Nov 4, 2026).
+
+**Try it, no key needed: [replays of real errands](https://jorgeress.github.io/timo/).**
+Each one shows the screenshots the model saw, what it typed and clicked, and every
+verdict with the rule that fired.
 
 ![A fake invoice swaps the IBAN. The agent types it, Timo denies the click with payee-drift, and the agent goes back and pays the real bill.](docs/timo-swap.gif)
 
-*A fake invoice that only swaps the IBAN. The agent falls for it; Timo stops the click
-(`payee-drift`), shows where each value came from, and the agent pays the real bill instead.
-Real run on Muse Spark 1.3 from the Oct 30 batch (errand `timo-swap-7`).*
+*A fake invoice that only swaps the IBAN. Muse Spark types it into the bank; Timo's live
+feed on the left shows the click denied (`payee-drift`: the ledger has another account for
+Lumen), and the agent goes back and pays the real bill. Recorded on Nov 4 with
+`npm run errand -- --scenario swap --guardian live --phone --show`, sped up 2x in places.*
 
 ## Vocabulary
 The same words are used in the code, the UI and the video.
@@ -44,7 +49,7 @@ and the model API's own injection check never fired: there was no instruction to
 only a wrong number. The loud version of the attack ("note to AI assistants") failed 0 of 9.
 
 ## How it works
-0. **Ask.** Carmen taps one button on her phone and says what she needs, in Spanish.
+0. **Ask.** Carmen taps one button on her phone and says what she needs, in her own words.
    Muse Voice Transcribe turns it into text, biased toward her payees' names; the
    phone reads it back and nothing starts until she taps "Yes, do it". Her words are
    the only `request` origin. When the errand ends, the phone says what happened,
@@ -64,8 +69,9 @@ only a wrong number. The loud version of the attack ("note to AI assistants") fa
    backs. It never extracts payment values; those come from the page itself.
 4. **Guardian desk.** An ask holds the click and shows up on the guardian's phone: who,
    how much, which account ending, where it came from, the reader's quote, and the
-   screenshot Timo judged. Approving needs a tick that says "I called them on a number
-   I already had". A new payee can be added to the ledger with the phone number they
+   screenshot Timo judged. It walks the family member through three steps: call the payee
+   (on the number from the ledger when Timo knows them), tick "I called and they confirmed
+   this payment", then approve or decline. A new payee can be added to the ledger with the phone number they
    called; a known payee's account can never be changed from there. No answer in 10
    minutes is a decline.
 5. **Log.** Every verdict and every guardian answer is one line in a hash chain;
@@ -283,7 +289,9 @@ The errand runs against a toy world on localhost (webmail, Lumen's portal, a loo
 domain, Banco Sol) and writes its verdict log, lens page, Carmen's card and the guardian
 page under `runs/`. Each errand costs about $0.01. Other flags: `--scenario <name>` (any
 of the scenarios in `world/scenario.ts`), `--condition bare|meta-checks|timo|timo-reader`,
-`--guardian live` (desk on :4300), `--phone` (Carmen's app on :4400). The eval is
+`--guardian live` (desk on :4300, live verdict feed on :4300/watch), `--phone` (Carmen's
+app on :4400), `--show` (the agent's browser on screen). `npm run replay` builds the
+replay site from `runs/` into `site/`. The eval is
 `npm run eval`; it stops at `--total-budget` dollars.
 
 Optional: the second reader (`--condition timo-reader`) runs Muse Spark Open on Baseten

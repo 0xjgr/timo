@@ -18,10 +18,13 @@ const PICKS: Pick[] = [
 ];
 
 const INTRO = `<p>Timo is an errand agent for people who can't spot a scam. Carmen, 74, says
-"pay the electricity bill"; a Muse Spark computer-use agent does it on a toy desktop, and a
+"pay the October power bill"; a Muse Spark computer-use agent does it on a toy desktop, and a
 deterministic firewall checks where every IBAN and amount came from before money moves.</p>
-<p class="dim">Each errand below is one recorded run: the screenshots the model saw, what it said and
-clicked, and every verdict with the rule that fired. Source and eval: the GitHub repo.</p>`;
+<div class="facts"><span>final rules, 210 errands</span><span>without Timo the agent paid the scammer <b class="paid-attacker">25 of 89</b> times</span>
+<span>with Timo <b class="paid-payee">0 of 90</b></span><span>legit errands blocked 0 of 15</span></div>
+<p class="dim" style="margin-top:12px">Each errand below is one recorded run: the screenshots the model saw, what it said and
+clicked, and every verdict with the rule that fired. Source, eval and every number:
+<a href="https://github.com/jorgeress/timo">github.com/jorgeress/timo</a>.</p>`;
 
 const { values: args } = parseArgs({ options: { out: { type: "string", default: "site" }, runs: { type: "string", default: "runs" } } });
 

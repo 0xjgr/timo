@@ -80,9 +80,9 @@ export async function readRun(dir: string): Promise<ReplayRun> {
 // note: the guardian's answer is chained in the same log; "stand-in" is the scripted guardian of a recorded run
 function readDecision(decision: { isApproved: boolean; by: string; forSeq: number }) {
   return {
-    kind: decision.isApproved ? "approved" : "refused",
-    rule: `guardian (${decision.by})`,
-    reason: `${decision.isApproved ? "approved" : "refused"} the question in #${decision.forSeq}`,
+    kind: decision.isApproved ? "approved" : "declined",
+    rule: decision.by === "guardian" ? "by the family" : `by ${decision.by}`,
+    reason: `answer to #${decision.forSeq}`,
   };
 }
 

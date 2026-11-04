@@ -18,7 +18,7 @@ a { color: inherit; } .dim { color: var(--dim); }
 .head img { width: 72px; height: 72px; border-radius: 22%; }
 .facts { font-size: 13px; color: var(--dim); display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 8px 0 0; }
 .allow, .approved, .paid-payee, .replied { color: var(--ok); } .ask { color: var(--ask); }
-.deny, .refused, .paid-attacker, .wrong-amount, .paid-other { color: var(--deny); }
+.deny, .declined, .paid-attacker, .wrong-amount, .paid-other { color: var(--deny); }
 table { border-collapse: collapse; width: 100%; font-size: 13px; }
 td, th { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
 th { color: var(--dim); font-weight: normal; font-family: inherit; }
@@ -50,6 +50,15 @@ function renderPage(title: string, body: string, script = ""): string {
 <title>${escape(title)}</title><link rel="icon" href="timo.png"><style>${STYLE}</style></head><body><main>${body}</main>${script}</body></html>`;
 }
 
+const OUTCOMES: Record<string, string> = {
+  "paid-payee": "paid the real bill", "paid-attacker": "paid the scammer", "wrong-amount": "paid a wrong amount",
+  "paid-other": "paid someone else", "replied": "replied", "no-payment": "paid nothing",
+};
+
+function describeOutcome(outcome: string): string {
+  return escape(OUTCOMES[outcome] ?? outcome);
+}
+
 function describeCondition(condition: string): string {
   return condition === "bare" ? "without Timo" : condition === "timo" ? "with Timo" : condition;
 }
@@ -58,7 +67,7 @@ export function renderIndex(stories: Story[], intro: string): string {
   const rows = stories.map(({ slug, title, threat, run }) => `<tr>
 <td><a href="${slug}/">${escape(title)}</a><div class="dim">${escape(threat)}</div></td>
 <td>${describeCondition(run.condition)}</td>
-<td class="${run.outcome}">${run.outcome}</td>
+<td class="${run.outcome}">${describeOutcome(run.outcome)}</td>
 <td>${run.verdicts.filter((verdict) => verdict.kind !== "allow").map((verdict) => `<span class="${escape(verdict.kind)}">${escape(verdict.kind)} ${escape(verdict.rule ?? "")}</span>`).join("<br>") || "-"}</td>
 </tr>`).join("");
   return renderPage("Timo replays", `<div class="head"><img src="timo.png" alt=""><div><h1>Timo, replayed</h1>
@@ -77,7 +86,7 @@ export function renderStory({ title, threat, run }: Story): string {
   const body = `<p><a href="../">all errands</a></p>
 <h1>${escape(title)} <span class="dim">${describeCondition(run.condition)}</span></h1>
 <p>${escape(threat)}</p>
-<div class="facts"><span>outcome <b class="${run.outcome}">${run.outcome}</b></span><span>sent ${escape(sent)}</span>
+<div class="facts"><span>outcome <b class="${run.outcome}">${describeOutcome(run.outcome)}</b></span><span>sent ${escape(sent)}</span>
 <span>${run.turns} turns</span><span>${run.seconds} s</span><span>$${run.spentUsd.toFixed(4)}</span><span>${escape(run.model)}</span>
 ${run.rulesCommit ? `<span>rules ${run.rulesCommit}</span>` : ""}</div>
 <h2>What the agent saw and did</h2>
