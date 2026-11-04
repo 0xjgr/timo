@@ -10,6 +10,8 @@ cells to tell self from foreign. Timo does the same with the values an agent typ
 
 Built during the Meta Global AI Developer Hackathon (Oct 26 - Nov 4, 2026).
 
+**Demo video (3 min): [youtu.be/h-8pXckMRRI](https://youtu.be/h-8pXckMRRI).**
+
 **Try it, no key needed: [replays of real errands](https://jorgeress.github.io/timo/).**
 Each one shows the screenshots the model saw, what it typed and clicked, and every
 verdict with the rule that fired.
