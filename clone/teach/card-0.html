@@ -1,0 +1,35 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Timo stopped a payment</title><style>
+:root { --bg: #f7f5f0; --card: #ffffff; --text: #1c1c1a; --dim: #5e5d58; --line: #dedbd2;
+  --stop: #b3261e; --stop-soft: #fbeae8; --wait: #8a5a00; --wait-soft: #fbf1dc; --ok: #1e6b3c; --ok-soft: #e6f2ea; }
+@media (prefers-color-scheme: dark) { :root { --bg: #161615; --card: #1f1f1d; --text: #ecebe6; --dim: #a5a39b; --line: #36352f;
+  --stop: #ff8a80; --stop-soft: #3a1f1d; --wait: #f2c14e; --wait-soft: #352a12; --ok: #7ed39c; --ok-soft: #1a2e21; } }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 21px/1.5 "DejaVu Sans", system-ui, sans-serif; }
+main { max-width: 680px; margin: 0 auto; padding: 32px 16px 48px; }
+.brand { font-weight: bold; letter-spacing: .04em; color: var(--dim); font-size: 16px; }
+h1 { font-size: 34px; line-height: 1.2; margin: 10px 0 18px; }
+.deny h1 { color: var(--stop); } .ask h1 { color: var(--wait); }
+.said { font-size: 23px; margin: 0 0 26px; }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 0 0 26px; }
+.pair div { padding: 14px 16px; border-radius: 10px; }
+.pair .known { background: var(--ok-soft); } .pair .asked { background: var(--stop-soft); }
+.pair small { display: block; color: var(--dim); font-size: 15px; }
+.pair b { font-family: "DejaVu Sans Mono", ui-monospace, monospace; font-size: 26px; }
+.lesson { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; margin: 0 0 26px; }
+.lesson small { display: block; color: var(--dim); font-size: 15px; text-transform: uppercase; letter-spacing: .06em; }
+.safe { font-weight: bold; color: var(--ok); }
+footer { margin-top: 36px; color: var(--dim); font: 13px/1.5 "DejaVu Sans Mono", ui-monospace, monospace; overflow-wrap: anywhere; }
+@media (max-width: 480px) { .pair { grid-template-columns: 1fr; } h1 { font-size: 28px; } }
+</style></head><body><main class="deny">
+<div class="brand">TIMO</div>
+<h1>Timo stopped a payment</h1>
+<p class="said">Timo stopped this payment: it was a copy of the Lumen Energy S.A. website made to look real. It came from lumen-energia-pagos.com. Nothing was sent.</p>
+<div class="pair">
+<div class="known"><small>Lumen Energy S.A., in your records</small>account ending <b>1332</b></div>
+<div class="asked"><small>What the page asked for</small>account ending <b>7892</b></div>
+</div>
+<div class="lesson"><small>Next time</small>Open Lumen Energy S.A.&#39;s website yourself, not from a link in an email or a letter. If in doubt, call +34 900 100 200.</div>
+<p class="safe">Nothing was sent. Your money is where it was.</p>
+<footer>verdict 0 · rule brand-impostor · 2026-11-03T22:09:54.531Z · hash 12349a3be9b5 · words by Timo's template</footer>
+</main></body></html>
