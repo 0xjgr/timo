@@ -297,6 +297,14 @@ and needs `BASETEN_API_KEY` in `.env`. Everything else runs on the Meta key alon
 - The ledger file is not hash-chained; the chain records each addition, but someone
   with access to the machine can edit the file.
 - The guardian desk is a local server with a one-time link; there is no account system.
+- `amount-disputed` asks whenever a source on the payee's own domain states amounts that
+  leave out the one being paid, so an older real bill in the inbox with a different total
+  raises a question even when the payment is right. Safe, but it costs a prompt.
+- `payee-repeat` reads what the network gate saw leave. If one model turn clicks Send twice
+  and the second click is judged before the first request reaches the gate, the second can
+  pass. Not seen in any run; the bank's own duplicate check would be the second line.
+- The attacker loop's budget cap counts the victim errands and Wonder's replies, not a
+  Wonder call that failed after retries.
 
 ## AI tools used
 Listed at submission.
