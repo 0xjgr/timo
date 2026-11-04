@@ -11,6 +11,7 @@ export type AskView = {
   scam: string;
   beneficiary?: string;
   payeeName?: string;
+  payeePhone?: string;
   knownAccountEnd?: string;
   formAccountEnd?: string;
   amount?: string;
@@ -36,6 +37,8 @@ export function buildAskView(block: Blocked, ledger: Payee[], timeoutMs: number,
     scam: facts.scam,
     beneficiary: beneficiary?.slice(0, 80),
     payeeName: facts.payeeName,
+    // note: the number to call comes from the ledger the family wrote, never from the message
+    payeePhone: ledger.find((payee) => payee.name === facts.payeeName)?.phone,
     knownAccountEnd: facts.knownAccountEnd,
     formAccountEnd: facts.formAccountEnd,
     amount: facts.amount,

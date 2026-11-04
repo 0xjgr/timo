@@ -44,6 +44,7 @@ const book = await openLedgerBook(args.ledger);
 const desk = args.guardian === "live" ? await openDesk({ runDir, book, host: args["desk-host"], port: Number(args["desk-port"]) }) : undefined;
 if (desk) {
   console.log(`[desk] guardian link ${desk.url}`);
+  console.log(`[desk] watch link ${desk.watchUrl}`);
   console.log(await QRCode.toString(desk.url, { type: "terminal", small: true }));
 }
 // note: carmen's phone only runs on localhost: browsers give the microphone to localhost or https only

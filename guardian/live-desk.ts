@@ -9,8 +9,9 @@ import { isDecision, listVerdicts, verifyChain, type GuardianAnswer } from "../g
 import type { LedgerBook } from "../ledger/ledger-book.ts";
 import { buildAskView, type AskView } from "./ask-view.ts";
 import { renderDesk } from "./render-desk.ts";
+import { renderWatch } from "./render-watch.ts";
 
-export type Desk = { url: string; ask: (block: Blocked) => Promise<GuardianAnswer>; close: () => Promise<void> };
+export type Desk = { url: string; watchUrl: string; ask: (block: Blocked) => Promise<GuardianAnswer>; close: () => Promise<void> };
 
 type DeskOptions = { runDir: string; book: LedgerBook; host?: string; port?: number; timeoutMs?: number };
 
@@ -45,6 +46,7 @@ export async function openDesk(options: DeskOptions): Promise<Desk> {
       at: entry.at,
       kind: entry.verdict.kind,
       rule: entry.verdict.kind === "allow" ? null : entry.verdict.rule,
+      reason: entry.verdict.kind === "allow" ? null : entry.verdict.reason.slice(0, 240),
       target: entry.commit.targetDomain,
       answer: answers.get(entry.seq) ?? null,
     }));
@@ -60,14 +62,14 @@ export async function openDesk(options: DeskOptions): Promise<Desk> {
 
   const route = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
     const path = new URL(req.url ?? "/", "http://desk").pathname;
-    if (req.method === "GET" && path === "/") {
+    if (req.method === "GET" && (path === "/" || path === "/watch")) {
       const nonce = randomBytes(12).toString("base64");
       res.writeHead(200, {
         "content-type": "text/html; charset=utf-8",
-        "content-security-policy": `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'unsafe-inline'; img-src 'self'; connect-src 'self'; frame-src 'self'; frame-ancestors 'none'`,
+        "content-security-policy": `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-src 'self'; frame-ancestors 'none'`,
         "cache-control": "no-store",
       });
-      return void res.end(renderDesk(nonce));
+      return void res.end(path === "/watch" ? renderWatch(nonce) : renderDesk(nonce));
     }
     if (req.method === "POST" && path === "/api/session") {
       const body = SESSION.safeParse(await readJson(req));
@@ -107,7 +109,8 @@ export async function openDesk(options: DeskOptions): Promise<Desk> {
 
   await new Promise<void>((resolve) => server.listen(port, host, resolve));
   const shownHost = host === "0.0.0.0" ? findLanAddress() : host;
-  const url = `http://${shownHost}:${(server.address() as AddressInfo).port}/#t=${token}`;
+  const origin = `http://${shownHost}:${(server.address() as AddressInfo).port}`;
+  const url = `${origin}/#t=${token}`;
 
   const ask = async (block: Blocked): Promise<GuardianAnswer> => {
     const lens = `lens/verdict-${block.seq}.html`;
@@ -133,7 +136,7 @@ export async function openDesk(options: DeskOptions): Promise<Desk> {
       server.close(() => resolve());
     });
 
-  return { url, ask, close };
+  return { url, watchUrl: `${origin}/watch#t=${token}`, ask, close };
 }
 
 function readCandidate(block: Blocked) {
