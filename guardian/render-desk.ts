@@ -43,7 +43,10 @@ h2 { font-size: 13px; color: var(--dim); text-transform: uppercase; letter-spaci
 .call { font-size: 22px; font-weight: bold; display: block; margin-top: 2px; }
 .check { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
 .check input { width: 24px; height: 24px; margin: 0; flex: none; accent-color: var(--ok); }
-.phone { width: 100%; font: inherit; padding: 12px; margin-top: 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--text); }
+.field { display: block; margin-top: 10px; font-size: 14px; color: var(--dim); }
+.hint { color: var(--dim); font-size: 14px; margin: -2px 0 0; text-align: center; }
+.hint:empty { display: none; }
+.phone { width: 100%; font: inherit; font-size: 18px; padding: 12px; margin-top: 4px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--text); }
 .buttons { display: grid; gap: 10px; }
 button { font: inherit; font-weight: bold; font-size: 19px; padding: 16px; border-radius: 14px; cursor: pointer; border: 2px solid transparent; }
 button.approve { background: var(--ok); color: var(--bg); }
@@ -180,9 +183,15 @@ function drawAsk(ask) {
   const approve = el("button", { className: "approve", textContent: isNew ? "Approve and add to Carmen's list" : "Approve this one payment", disabled: true });
   const decline = el("button", { className: "decline", textContent: "Decline, don't pay" });
   const checked = el("input", { type: "checkbox" });
-  const phone = el("input", { className: "phone mono", type: "tel", placeholder: "The number you called", autocomplete: "off" });
+  const phone = el("input", { className: "phone mono", type: "tel", placeholder: "e.g. 600 123 456", autocomplete: "off" });
   const error = el("p", { className: "error" });
-  const sync = () => { approve.disabled = !checked.checked || (isNew && phone.value.trim().length < 6); };
+  const hint = el("p", { className: "hint" });
+  const sync = () => {
+    const missing = !checked.checked ? (isNew ? "Tick the box and type the number you called to approve." : "Tick the box to approve.")
+      : isNew && phone.value.trim().length < 6 ? "Type the number you called; it goes on Carmen's list with them." : "";
+    approve.disabled = missing !== "";
+    hint.textContent = missing;
+  };
   checked.addEventListener("change", sync);
   phone.addEventListener("input", sync);
   const answer = async (isApproved) => {
@@ -197,9 +206,11 @@ function drawAsk(ask) {
   const callWho = ask.payeePhone
     ? el("li", {}, el("div", {}, "Call " + who + " on the number from Carmen's list", el("span", { className: "call mono", textContent: ask.payeePhone })))
     : el("li", {}, el("div", {}, "Call " + who + " on a number you already had. Not one from the message."));
-  const confirm = el("li", {}, el("div", {}, el("label", { className: "check" }, checked, el("span", { textContent: "I called and they confirmed this payment." })), isNew ? phone : ""));
+  const confirm = el("li", {}, el("div", {}, el("label", { className: "check" }, checked, el("span", { textContent: "I called and they confirmed this payment." })),
+    isNew ? el("label", { className: "field" }, el("span", { textContent: "The number you called" }), phone) : ""));
   const timer = el("div", { className: "timer mono" });
   timer.dataset.expires = ask.expiresAt;
+  sync();
   const evidence = ask.lensHref ? el("a", { className: "evidence", href: "#", textContent: "See what Timo saw", onclick: (event) => { event.preventDefault(); $("evidence").src = ask.lensHref; $("overlay").classList.add("open"); } }) : "";
   return el("section", { className: "ask" },
     el("div", { className: "band" }, el("span", { textContent: "Timo is holding a payment" }), el("span", { className: "mono", textContent: "#" + ask.seq })),
@@ -208,7 +219,7 @@ function drawAsk(ask) {
       el("div", { className: "who", textContent: "to " + who }),
       el("div", { className: "why" }, el("b", { textContent: "Why Timo stopped" }), el("span", { textContent: "This looks like " + ask.scam + "." })),
       facts, ...flags, evidence,
-      el("ol", { className: "steps" }, callWho, confirm, el("li", {}, el("div", { className: "buttons" }, approve, decline))),
+      el("ol", { className: "steps" }, callWho, confirm, el("li", {}, el("div", { className: "buttons" }, approve, hint, decline))),
       error, timer));
 }
 
