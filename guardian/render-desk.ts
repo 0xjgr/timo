@@ -1,36 +1,36 @@
 import { readFileSync } from "node:fs";
+import { FONT_FACES, MONO, SANS } from "../carmen/type-face.ts";
 
 const FACE = `data:image/png;base64,${readFileSync(new URL("../carmen/timo.png", import.meta.url)).toString("base64")}`;
 
 // note: same warm palette as carmen's phone; the family reads this on a phone, often in a hurry
 const STYLE = `
-:root { --bg: #f7f5f0; --card: #ffffff; --text: #1c1c1a; --dim: #5e5d58; --line: #dedbd2;
-  --ok: #1e6b3c; --ok-soft: #e6f2ea; --stop: #b3261e; --stop-soft: #fbeae8; --wait: #8a5a00; --wait-soft: #fbf1dc; --stage: #e9e6de; }
-@media (prefers-color-scheme: dark) { :root { --bg: #161615; --card: #1f1f1d; --text: #ecebe6; --dim: #a5a39b; --line: #36352f;
-  --ok: #7ed39c; --ok-soft: #1a2e21; --stop: #ff8a80; --stop-soft: #3a1f1d; --wait: #f2c14e; --wait-soft: #352a12; --stage: #0e0e0d; --frame: #3a3a36; } }
+${FONT_FACES}
+:root { --bg: #f4f6f3; --card: #ffffff; --text: #14231b; --dim: #5b6a61; --line: #d9e0da;
+  --ok: #1c6739; --ok-soft: #e3efe6; --stop: #b8321f; --stop-soft: #fbe9e5; --wait: #9a5b00; --wait-soft: #fcf0dc; --stage: #0f1a22; --frame: #1d2a33; }
 * { box-sizing: border-box; }
 html, body { height: 100%; }
-body { margin: 0; background: var(--bg); color: var(--text); font: 17px/1.45 "DejaVu Sans", system-ui, sans-serif; }
-.mono { font-family: "DejaVu Sans Mono", ui-monospace, monospace; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 17px/1.45 ${SANS}; }
+.mono { font-family: ${MONO}; }
 main { max-width: 520px; margin: 0 auto; padding: 18px 16px 40px; }
 header { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
 header img { width: 44px; height: 44px; border-radius: 22%; }
-header b { display: block; font-size: 18px; } header span { color: var(--dim); font-size: 14px; }
-h2 { font-size: 13px; color: var(--dim); text-transform: uppercase; letter-spacing: .08em; margin: 26px 0 10px; }
+header b { display: block; font-size: 19px; font-weight: 800; } header span { color: var(--dim); font-size: 14px; }
+h2 { font-size: 17px; font-weight: 800; margin: 28px 0 10px; }
 .quiet { background: var(--ok-soft); border-radius: 16px; padding: 18px; display: flex; gap: 14px; align-items: center; }
 .quiet b { color: var(--ok); display: block; font-size: 19px; }
 .quiet p { margin: 2px 0 0; font-size: 15px; color: var(--dim); }
 .quiet .dot { flex: none; width: 14px; height: 14px; border-radius: 50%; background: var(--ok); }
-.ask { background: var(--card); border: 2px solid var(--wait); border-radius: 18px; overflow: hidden; animation: arrive .35s ease-out; }
+.ask { background: var(--card); border: 2px solid var(--wait); border-radius: 22px; box-shadow: 0 14px 34px rgba(154,91,0,.16); overflow: hidden; animation: arrive .35s ease-out; }
 @keyframes arrive { from { transform: translateY(12px); opacity: 0; } }
-.ask .band { background: var(--wait-soft); color: var(--wait); font-weight: bold; padding: 12px 18px; font-size: 15px; display: flex; justify-content: space-between; gap: 8px; }
+.ask .band { background: var(--wait-soft); color: var(--wait); font-weight: 800; padding: 12px 18px; font-size: 17px; display: flex; justify-content: space-between; gap: 8px; }
 .ask .band .mono { font-weight: normal; }
 .ask .body { padding: 16px 18px 18px; }
-.money { font-size: 40px; font-weight: bold; line-height: 1.1; }
+.money { font-size: 46px; font-weight: 700; line-height: 1.1; }
 .money small { font-size: 20px; color: var(--dim); font-weight: normal; }
 .who { font-size: 21px; margin: 4px 0 14px; overflow-wrap: anywhere; }
 .why { background: var(--stop-soft); border-radius: 12px; padding: 12px 14px; margin: 0 0 14px; }
-.why b { color: var(--stop); display: block; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; }
+.why b { color: var(--stop); display: block; font-size: 15px; font-weight: 800; }
 .facts { display: grid; gap: 8px; margin: 0 0 14px; }
 .fact { display: grid; grid-template-columns: 7.2em 1fr; gap: 10px; font-size: 15px; align-items: baseline; }
 .fact dt { color: var(--dim); } .fact dd { margin: 0; overflow-wrap: anywhere; }
@@ -39,7 +39,7 @@ h2 { font-size: 13px; color: var(--dim); text-transform: uppercase; letter-spaci
 .flag { border-left: 4px solid var(--stop); padding: 6px 12px; margin: 0 0 14px; font-size: 15px; }
 .steps { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; counter-reset: step; }
 .steps > li { counter-increment: step; display: grid; grid-template-columns: 30px 1fr; gap: 10px; align-items: start; font-size: 16px; }
-.steps > li::before { content: counter(step); width: 30px; height: 30px; border-radius: 50%; background: var(--text); color: var(--bg); display: grid; place-items: center; font-weight: bold; font-size: 15px; }
+.steps > li::before { content: counter(step); width: 30px; height: 30px; border-radius: 50%; background: var(--wait-soft); color: var(--wait); display: grid; place-items: center; font-weight: bold; font-size: 15px; }
 .call { font-size: 22px; font-weight: bold; display: block; margin-top: 2px; }
 .check { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
 .check input { width: 24px; height: 24px; margin: 0; flex: none; accent-color: var(--ok); }
@@ -48,8 +48,8 @@ h2 { font-size: 13px; color: var(--dim); text-transform: uppercase; letter-spaci
 .hint:empty { display: none; }
 .phone { width: 100%; font: inherit; font-size: 18px; padding: 12px; margin-top: 4px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--text); }
 .buttons { display: grid; gap: 10px; }
-button { font: inherit; font-weight: bold; font-size: 19px; padding: 16px; border-radius: 14px; cursor: pointer; border: 2px solid transparent; }
-button.approve { background: var(--ok); color: var(--bg); }
+button { font: inherit; font-weight: 800; font-size: 19px; padding: 16px; border-radius: 14px; cursor: pointer; border: 2px solid transparent; }
+button.approve { background: var(--ok); color: #fff; }
 button.decline { background: transparent; border-color: var(--stop); color: var(--stop); }
 button:disabled { opacity: .3; cursor: not-allowed; }
 .timer { color: var(--dim); font-size: 13px; margin-top: 12px; text-align: center; }
@@ -78,11 +78,11 @@ button:disabled { opacity: .3; cursor: not-allowed; }
 @media (min-width: 1000px) and (min-height: 700px) {
   body { background: var(--stage); display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; height: 100vh; overflow: hidden; }
   .aside { display: block; grid-column: 1; justify-self: end; max-width: 460px; padding: 0 56px; }
-  .aside .role { font-size: 15px; color: var(--wait); font-weight: bold; text-transform: uppercase; letter-spacing: .08em; }
-  .aside h1 { font-size: 36px; line-height: 1.1; margin: 8px 0 14px; }
-  .aside p { color: var(--dim); font-size: 19px; margin: 0 0 12px; }
+  .aside { color: #e8efe9; max-width: 420px; padding: 0 64px; }
+  .aside h1 { font-size: 46px; line-height: 1.08; margin: 0 0 12px; font-weight: 800; }
+  .aside p { color: #9fb1a6; font-size: 22px; margin: 0; }
   main { grid-column: 2; width: 400px; height: min(860px, calc(100vh - 32px)); overflow-y: auto; background: var(--bg);
-    border: 10px solid var(--frame, #000); border-radius: 46px; box-shadow: 0 30px 70px rgba(0,0,0,.35); padding: 26px 16px 32px; scrollbar-width: none; }
+    border: 11px solid var(--frame); border-radius: 52px; box-shadow: 0 0 0 1px #2c3b45, 0 40px 90px rgba(0,0,0,.55); padding: 26px 16px 32px; scrollbar-width: none; }
   .overlay { inset: auto; left: 50%; top: 50%; width: 400px; height: min(860px, calc(100vh - 32px)); transform: translate(-50%, -50%); border-radius: 46px; overflow: hidden; border: 10px solid #000; }
 }
 `;
@@ -91,9 +91,7 @@ button:disabled { opacity: .3; cursor: not-allowed; }
 export function renderDesk(nonce: string): string {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Timo for the family</title><style>${STYLE}</style></head><body>
-<div class="aside"><div class="role">The family</div><h1>Ana, Carmen's daughter</h1>
-<p>Timo asks here only when a payment does not trace to Carmen's words or to her list of payees.</p>
-<p>Ana checks with a phone call, then answers with one tap.</p></div>
+<div class="aside"><h1>Ana, her daughter</h1><p>Timo asks her only when a payment can't be traced.</p></div>
 <main>
 <header><img src="${FACE}" alt=""><div><b>Timo for the family</b><span>Carmen's payments</span></div></header>
 <div id="asks"></div>
@@ -113,7 +111,7 @@ const $ = (id) => document.getElementById(id);
 const el = (tag, props = {}, ...kids) => { const node = Object.assign(document.createElement(tag), props); node.append(...kids); return node; };
 const VIA = { email: "an email", page: "a web page", pdf: "a PDF", photo: "a photographed letter" };
 const SAYS = { "payment-change": "says the bank account changed", pressure: "pushes to pay now", elsewhere: "sends you to pay or log in elsewhere", "ai-instruction": "gives orders to the assistant", secrecy: "asks to keep it secret" };
-const WHAT = { allow: "PAID", deny: "STOPPED", ask: "ASKED YOU" };
+const WHAT = { allow: "Paid", deny: "Stopped", ask: "Asked you" };
 const RULE_WORDS = {
   "payee-drift": "the account was swapped", "brand-impostor": "a copied website", "payee-new": "someone new",
   "amount-unbacked": "an unusually high amount", "amount-disputed": "two different amounts", "payee-repeat": "the same bill again",
