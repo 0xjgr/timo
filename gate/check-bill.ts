@@ -1,4 +1,4 @@
-import type { Page } from "playwright";
+import type { BrowserContext, Page } from "playwright";
 import type { Payee } from "../ledger/payee.ts";
 import { extractAmounts } from "../provenance/amount.ts";
 import { registrableDomain } from "../provenance/domain.ts";
@@ -15,9 +15,10 @@ export async function checkBill(page: Page, payee: Payee): Promise<BillCheck | u
   const browser = page.context().browser();
   if (!browser) return { payeeId: payee.id, url, ok: false, error: "no browser to open the bill page" };
   // note: a context of its own, so nothing the agent's tabs hold or run reaches the check
-  const own = await browser.newContext();
-  const tab = await own.newPage();
+  let own: BrowserContext | undefined;
   try {
+    own = await browser.newContext();
+    const tab = await own.newPage();
     await tab.goto(url, { timeout: LOAD_MS });
     const text = await tab.innerText("body", { timeout: LOAD_MS });
     const amounts = extractAmounts(text);
@@ -27,6 +28,6 @@ export async function checkBill(page: Page, payee: Payee): Promise<BillCheck | u
     // note: playwright throws on a page that does not load; for the gate that is an expected answer, the bill is unchecked
     return { payeeId: payee.id, url, ok: false, error: error instanceof Error ? error.message.split("\n")[0]! : String(error) };
   } finally {
-    await own.close();
+    await own?.close();
   }
 }

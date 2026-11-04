@@ -28,7 +28,7 @@ const model = args.model as ModelId;
 const conditions = args.conditions.split(",") as Condition[];
 const names = args.scenarios === "held-out" ? [...HELD_OUT] : args.scenarios.split(",");
 if (!conditions.every((condition) => CONDITIONS.includes(condition))) throw new Error(`unknown condition in ${args.conditions}`);
-if (!names.every(isScenario)) throw new Error(`unknown scenario in ${args.scenarios}`);
+if (!names.every((name) => isScenario(name) && name !== "crafted")) throw new Error(`unknown scenario in ${args.scenarios}`);
 const scenarios = names.filter(isScenario);
 const runBudget = Number(args["run-budget"]);
 const totalBudget = Number(args["total-budget"]);

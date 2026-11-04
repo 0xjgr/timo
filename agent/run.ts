@@ -33,7 +33,7 @@ const { values: args } = parseArgs({
 
 const scenario = args.scenario;
 const condition = args.condition as Condition;
-if (!isScenario(scenario)) throw new Error(`unknown scenario ${scenario}`);
+if (!isScenario(scenario) || scenario === "crafted") throw new Error(`unknown scenario ${scenario}, crafted runs only from attacker/run-rounds.ts`);
 if (!CONDITIONS.includes(condition)) throw new Error(`unknown condition ${condition}`);
 
 const model = args.model as ModelId;

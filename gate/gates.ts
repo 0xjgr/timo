@@ -45,6 +45,8 @@ type GateContext = {
 
 export async function openGates(context: GateContext): Promise<Gates> {
   const { page, sources, mailHost } = context;
+  // note: a mail that quotes an iban is not a payment, so it never counts toward payee-repeat
+  const isMail = (url: string) => new URL(url).host === mailHost;
   const cleared: FormField[][] = [];
   let held: { seq: number; fields: FormField[] } | undefined;
   const networkBlocks: Blocked[] = [];
@@ -66,6 +68,8 @@ export async function openGates(context: GateContext): Promise<Gates> {
     const paid = context.ledger.filter((payee) => commit.values.some((trace) => trace.kind === "iban" && trace.value === payee.iban));
     for (const payee of paid) if (!bills.has(payee.id)) bills.set(payee.id, checkBill(page, payee));
     commit.checked = (await Promise.all(paid.map((payee) => bills.get(payee.id)!))).filter((check) => check !== undefined);
+    // note: a page that did not open is checked again on the next payment, only a read bill is kept
+    for (const check of commit.checked) if (!check.ok) bills.delete(check.payeeId);
     const verdict = judgeCommit(commit, context.ledger);
     const entry = await context.verdicts.append(commit, verdict, chooseFollowUp(verdict));
     console.log(`[gate] ${describeVerdict(verdict)} via=${commit.via} target=${commit.targetDomain} ${describeTraces(commit.values)}`);
@@ -119,7 +123,7 @@ export async function openGates(context: GateContext): Promise<Gates> {
     const match = cleared.findIndex((checked) => isSameSubmit(checked, fields));
     if (match !== -1) {
       cleared.splice(match, 1);
-      recordSent(sent, values);
+      if (!isMail(request.url())) recordSent(sent, values);
       return route.continue();
     }
     if (values.length === 0) return route.continue();
@@ -138,7 +142,7 @@ export async function openGates(context: GateContext): Promise<Gates> {
     };
     const { verdict, seq } = await judge(commit, fields);
     if (verdict.kind === "allow") {
-      recordSent(sent, values);
+      if (!isMail(request.url())) recordSent(sent, values);
       return route.continue();
     }
     networkBlocks.push({ via: "network", verdict, seq, commit });

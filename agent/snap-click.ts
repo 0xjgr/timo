@@ -4,13 +4,13 @@ import type { Action } from "./responses.ts";
 
 const SNAP_PX = 20;
 
-// note: the model often clicks a few px off a text link (15 px above "View my bill" in two oct 30 runs) and burns its steps.
+// note: the model often clicks a few px off a text link (15 px above "View my bill" in two oct 30 runs) and burns its steps
 // threat: a near miss must never become a payment, so it snaps to links and text fields only, never to a button or submit
 export async function snapClick(page: Page, action: Action): Promise<Action> {
   if (action.type !== "click" && action.type !== "double_click") return action;
   if (action.type === "click" && action.button !== undefined && action.button !== "left") return action;
   const target = await readSettled(page, () => page.evaluate(([x, y, reach]) => {
-    const SNAPPABLE = 'a[href], input:not([type=submit]):not([type=button]):not([type=image]):not([type=hidden]), textarea, select';
+    const SNAPPABLE = 'a[href], input:is([type=text], [type=search], [type=email], [type=tel], [type=number], [type=password], :not([type])), textarea, select';
     const ACTIVE = `${SNAPPABLE}, button, [role=button], label, input`;
     const hit = document.elementFromPoint(x, y);
     if (!hit || hit.closest(ACTIVE)) return null;
