@@ -40,7 +40,12 @@ function escape(text: string): string {
   return text.replace(/[&<>"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;" })[char]!);
 }
 
-function page(title: string, body: string, script = ""): string {
+// threat: the agent's words quote attacker mail; a "</script>" in them must not end the script block
+function toScript(value: unknown): string {
+  return JSON.stringify(value).replace(/</g, "\\u003c").replace(/\u2028|\u2029/g, (char) => `\\u${char.charCodeAt(0).toString(16)}`);
+}
+
+function renderPage(title: string, body: string, script = ""): string {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${escape(title)}</title><link rel="icon" href="timo.png"><style>${STYLE}</style></head><body><main>${body}</main>${script}</body></html>`;
 }
@@ -54,9 +59,9 @@ export function renderIndex(stories: Story[], intro: string): string {
 <td><a href="${slug}/">${escape(title)}</a><div class="dim">${escape(threat)}</div></td>
 <td>${describeCondition(run.condition)}</td>
 <td class="${run.outcome}">${run.outcome}</td>
-<td>${run.verdicts.filter((verdict) => verdict.kind !== "allow").map((verdict) => `<span class="${verdict.kind}">${verdict.kind} ${verdict.rule ?? ""}</span>`).join("<br>") || "-"}</td>
+<td>${run.verdicts.filter((verdict) => verdict.kind !== "allow").map((verdict) => `<span class="${escape(verdict.kind)}">${escape(verdict.kind)} ${escape(verdict.rule ?? "")}</span>`).join("<br>") || "-"}</td>
 </tr>`).join("");
-  return page("Timo replays", `<div class="head"><img src="timo.png" alt=""><div><h1>Timo, replayed</h1>
+  return renderPage("Timo replays", `<div class="head"><img src="timo.png" alt=""><div><h1>Timo, replayed</h1>
 <p class="dim">Real errands recorded from the repo's harness. Nothing on this site calls a model or needs a key.</p></div></div>
 ${intro}
 <h2>Errands</h2><div class="scroll"><table><tr><th>Errand</th><th>Run</th><th>Outcome</th><th>What fired</th></tr>${rows}</table></div>`);
@@ -64,7 +69,7 @@ ${intro}
 
 export function renderStory({ title, threat, run }: Story): string {
   const verdictRows = run.verdicts.map((verdict) => `<tr>
-<td>${verdict.seq}</td><td class="${verdict.kind}">${verdict.kind}</td><td>${escape(verdict.rule ?? "")}</td>
+<td>${verdict.seq}</td><td class="${escape(verdict.kind)}">${escape(verdict.kind)}</td><td>${escape(verdict.rule ?? "")}</td>
 <td style="font-family:inherit">${escape(verdict.reason ?? "")}</td>
 <td>${[verdict.hasLens ? `<a href="lens/verdict-${verdict.seq}.html">lens</a>` : "", verdict.hasCard ? `<a href="teach/card-${verdict.seq}.html">carmen's card</a>` : ""].filter(Boolean).join(" ")}</td>
 </tr>`).join("");
@@ -84,13 +89,13 @@ ${run.verdicts.length ? `<div class="scroll"><table><tr><th>#</th><th>Verdict</t
 ${run.hasGuardian ? `<p><a href="guardian.html">The guardian's page for this errand</a>, the hash-chained log the family sees.</p>` : ""}`;
   const verdicts = Object.fromEntries(run.verdicts.map((verdict) => [verdict.seq, verdict]));
   const script = `<script>
-const STEPS = ${JSON.stringify(run.steps)}, VERDICTS = ${JSON.stringify(verdicts)};
+const STEPS = ${toScript(run.steps)}, VERDICTS = ${toScript(verdicts)};
 const esc = (text) => text.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const slider = document.getElementById("step");
 function show(index) {
   const step = STEPS[index]; slider.value = index;
   document.getElementById("screen").src = step.image;
-  const flags = step.verdicts.map((seq) => VERDICTS[seq]).map((v) => '<div class="flag ' + v.kind + '">' + v.kind + ' ' + (v.rule || '') + (v.reason ? '<span>' + esc(v.reason) + '</span>' : '') + '</div>').join("");
+  const flags = step.verdicts.map((seq) => VERDICTS[seq]).map((v) => '<div class="flag ' + esc(v.kind) + '">' + esc(v.kind) + ' ' + esc(v.rule || '') + (v.reason ? '<span>' + esc(v.reason) + '</span>' : '') + '</div>').join("");
   document.getElementById("side").innerHTML = '<div class="dim">step ' + index + ' of ' + (STEPS.length - 1) + '</div>' +
     step.words.map((w) => '<p class="said">' + esc(w) + '</p>').join("") +
     step.actions.map((a) => '<div class="act">' + esc(a) + '</div>').join("") + flags;
@@ -101,5 +106,5 @@ document.getElementById("next").addEventListener("click", () => show(Math.min(ST
 document.addEventListener("keydown", (e) => { if (e.key === "ArrowLeft") document.getElementById("prev").click(); if (e.key === "ArrowRight") document.getElementById("next").click(); });
 show(0);
 </script>`;
-  return page(`Timo replay: ${title}`, body, script);
+  return renderPage(`Timo replay: ${title}`, body, script);
 }
