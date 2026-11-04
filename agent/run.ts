@@ -58,6 +58,7 @@ const askGuardian = phone
   ? async (block: Blocked) => {
       phone.showAsking();
       const answer = await (desk?.ask ?? (() => answerAsGuardian(scenario)))(block);
+      console.log(`[phone] guardian answered seq=${block.seq}`);
       phone.showWorking();
       return answer;
     }
