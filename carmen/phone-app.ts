@@ -59,7 +59,7 @@ export async function openPhone(options: PhoneOptions): Promise<PhoneApp> {
       const nonce = randomBytes(12).toString("base64");
       res.writeHead(200, {
         "content-type": "text/html; charset=utf-8",
-        "content-security-policy": `default-src 'none'; script-src 'nonce-${nonce}'; img-src data:; style-src 'unsafe-inline'; connect-src 'self'; frame-src 'self'; frame-ancestors 'none'`,
+        "content-security-policy": `default-src 'none'; script-src 'nonce-${nonce}'; img-src data:; font-src data:; style-src 'unsafe-inline'; connect-src 'self'; frame-src 'self'; frame-ancestors 'none'`,
         "permissions-policy": "microphone=(self)",
         "cache-control": "no-store",
       });
