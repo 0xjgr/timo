@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
 import { LUMEN_LOGO_SVG } from "./logo.ts";
@@ -22,8 +23,13 @@ export async function startWorld(scenario: Scenario, crafted?: Email): Promise<W
   const server = createServer(async (req, res) => {
     const path = req.url ?? "/";
     const site = findSite(req.headers.host ?? "");
+    // threat: the inbox shows mail an attacker model wrote; the mail site runs no inline script or handler but its own
+    const nonce = randomBytes(12).toString("base64");
     const send = (html: string, status = 200) => {
-      res.writeHead(status, { "content-type": "text/html; charset=utf-8" });
+      res.writeHead(status, {
+        "content-type": "text/html; charset=utf-8",
+        ...(site === "mail" ? { "content-security-policy": `script-src 'self' 'nonce-${nonce}'; object-src 'none'; base-uri 'none'` } : {}),
+      });
       res.end(html);
     };
 
@@ -61,7 +67,7 @@ export async function startWorld(scenario: Scenario, crafted?: Email): Promise<W
     const email = site === "mail" && emailMatch ? emails[index] : undefined;
     const part = emailMatch?.[2];
     if (email && part === "/reply") return send(renderReply(email));
-    if (email?.attachment && part === "/attachment") return send(renderAttachment(email, index));
+    if (email?.attachment && part === "/attachment") return send(renderAttachment(email, index, nonce));
     if (email?.attachment && part === "/attachment.pdf") {
       res.writeHead(200, { "content-type": "application/pdf" });
       return res.end(renderInvoicePdf());

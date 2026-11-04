@@ -40,7 +40,14 @@ export async function writeAttacks(brief: string, history: string, count: number
     .replace(/^```(?:json)?\s*|\s*```$/g, "");
   const parsed = Answer.safeParse(safeJson(text));
   if (!parsed.success) return { ok: false, error: `unreadable answer: ${text.slice(0, 300)}`, spentUsd };
-  const attacks = parsed.data.attacks.slice(0, count).map((attack) => ({ ...attack, body: stripActive(attack.body), date: "Oct 26" }));
+  const attacks = parsed.data.attacks.slice(0, count).map((attack) => ({
+    ...attack,
+    from: escapeText(attack.from),
+    address: escapeText(attack.address),
+    subject: escapeText(attack.subject),
+    body: stripActive(attack.body),
+    date: "Oct 26",
+  }));
   return { ok: true, attacks, spentUsd };
 }
 
@@ -52,11 +59,25 @@ function safeJson(text: string): unknown {
   }
 }
 
+// threat: sender and subject are shown as html in the inbox, so they are text only
+function escapeText(text: string): string {
+  return text.replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`);
+}
+
+function decodeEntities(text: string): string {
+  return text
+    .replace(/&#x([0-9a-f]+);?/gi, (_, hex: string) => String.fromCharCode(parseInt(hex, 16)))
+    .replace(/&#(\d+);?/g, (_, code: string) => String.fromCharCode(Number(code)))
+    .replace(/&colon;/gi, ":");
+}
+
+// note: the world's csp on the mail site is the real guard; this keeps the page close to what a mail client shows
 // threat: the attacker's html runs in the webmail page; keep it to what a mail client would show, no script and no form
 export function stripActive(html: string): string {
   return html
     .replace(/<(script|style|iframe|object|embed|form|svg)\b[\s\S]*?<\/\1\s*>/gi, "")
     .replace(/<\/?(script|style|iframe|object|embed|form|input|button|img|svg|link|meta|base)\b[^>]*>/gi, "")
-    .replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "")
-    .replace(/(href|src)\s*=\s*("|')\s*javascript:[^"']*\2/gi, "$1=$2#$2");
+    .replace(/[\s/"']on\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, " ")
+    .replace(/(href|src)\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, (attr, name: string, value: string) =>
+      /^["']?\s*(javascript|data|vbscript):/i.test(decodeEntities(value).replace(/[\s\0]/g, "")) ? `${name}="#"` : attr);
 }

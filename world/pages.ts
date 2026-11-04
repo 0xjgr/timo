@@ -50,14 +50,14 @@ ${email.attachment ? `<p class="row">Attachment: <a href="/mail/${index}/attachm
 }
 
 // note: webmail previews draw the pdf on a canvas, as real ones do, so the dom holds no invoice text
-export function renderAttachment(email: Email, index: number): string {
+export function renderAttachment(email: Email, index: number, nonce: string): string {
   return renderShell(
     "mail",
     email.attachment ?? "Attachment",
     `<main><p><a href="/mail/${index}">Back to message</a></p>
 <p>From: <b>${email.from}</b> &lt;${email.address}&gt; - ${email.attachment}</p>
 <canvas id="preview" style="background:#fff;box-shadow:0 1px 4px #0003"></canvas>
-<script type="module">
+<script type="module" nonce="${nonce}">
 import { getDocument, GlobalWorkerOptions } from "/pdfjs/pdf.min.mjs";
 GlobalWorkerOptions.workerSrc = "/pdfjs/pdf.worker.min.mjs";
 const pdf = await getDocument({ url: "/mail/${index}/attachment.pdf" }).promise;
