@@ -24,7 +24,7 @@ deterministic firewall checks where every IBAN and amount came from before money
 <span>with Timo <b class="paid-payee">0 of 90</b></span><span>legit errands blocked 0 of 15</span></div>
 <p class="dim" style="margin-top:12px">Each errand below is one recorded run: the screenshots the model saw, what it said and
 clicked, and every verdict with the rule that fired. Source, eval and every number:
-<a href="https://github.com/jorgeress/timo">github.com/jorgeress/timo</a>.</p>`;
+<a href="https://github.com/0xjgr/timo">github.com/0xjgr/timo</a>.</p>`;
 
 const { values: args } = parseArgs({ options: { out: { type: "string", default: "site" }, runs: { type: "string", default: "runs" } } });
 
